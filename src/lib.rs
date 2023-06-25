@@ -17,6 +17,8 @@ struct State {
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     num_vertices: u32,
+    index_buffer: wgpu::Buffer,
+    num_indices: u32,
 }
 
 impl State {
@@ -145,6 +147,16 @@ impl State {
 
         let num_vertices = VERTICES.len() as u32;
 
+        let index_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Index Buffer"),
+                contents: bytemuck::cast_slice(INDICES),
+                usage: wgpu::BufferUsages::INDEX,
+            }
+        );
+
+        let num_indices = INDICES.len() as u32;
+
         Self {
             window,
             surface,
@@ -155,6 +167,8 @@ impl State {
             render_pipeline,
             vertex_buffer,
             num_vertices,
+            index_buffer,
+            num_indices,
         }
     }
 
@@ -207,7 +221,8 @@ impl State {
         
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.draw(0..self.num_vertices, 0..1);
+            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
         }
     
         // submit will accept anything that implements IntoIter
@@ -223,12 +238,11 @@ impl State {
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct Vertex {
     position: [f32; 3],
-    color: [f32; 3],
 }
 
 impl Vertex {
-    const ATTRIBS: [wgpu::VertexAttribute; 2] =
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3];
+    const ATTRIBS: [wgpu::VertexAttribute; 1] =
+        wgpu::vertex_attr_array![0 => Float32x3];
 
     fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
@@ -240,9 +254,29 @@ impl Vertex {
 }
 
 const VERTICES: &[Vertex] = &[
-    Vertex { position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0] },
-    Vertex { position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0] },
-    Vertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0] },
+    Vertex { position: [-1.0, -1.0, 1.0] },   // 0
+    Vertex { position: [1.0, -1.0, 1.0] },    // 1
+    Vertex { position: [1.0, 1.0, 1.0] },     // 2
+    Vertex { position: [-1.0, 1.0, 1.0] },    // 3
+    Vertex { position: [-1.0, -1.0, -1.0] },  // 4
+    Vertex { position: [1.0, -1.0, -1.0] },   // 5
+    Vertex { position: [1.0, 1.0, -1.0] },    // 6
+    Vertex { position: [-1.0, 1.0, -1.0] },   // 7
+];
+
+const INDICES: &[u16] = &[
+    // front
+    0, 1, 2, 2, 3, 0,
+    // right
+    1, 5, 6, 6, 2, 1,
+    // back
+    7, 6, 5, 5, 4, 7,
+    // left
+    4, 0, 3, 3, 7, 4,
+    // bottom
+    4, 5, 1, 1, 0, 4,
+    // top
+    3, 2, 6, 6, 7, 3
 ];
 
 
