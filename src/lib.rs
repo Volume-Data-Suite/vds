@@ -1,3 +1,5 @@
+mod texture;
+
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
@@ -31,6 +33,7 @@ struct State {
     index_buffer: wgpu::Buffer,
     num_indices: u32,
     diffuse_bind_group: wgpu::BindGroup, 
+    diffuse_texture: texture::Texture,
 }
 
 impl State {
@@ -97,88 +100,20 @@ impl State {
         };
         surface.configure(&device, &config);
 
-        let mut volume_data_bytes = get_file_as_byte_vec("MRbrain_16bit_256x256x109.raw");
+        let file_name = "MRbrain_16bit_256x256x109.raw";
+        let mut volume_data_bytes = get_file_as_byte_vec(file_name);
         let dimensions: (u32, u32, u32) = (256, 256, 109);
 
-        // https://stackoverflow.com/questions/50243866/how-do-i-convert-two-u8-primitives-into-a-u16-primitive
-        // let number = ((vector[0] as u16) << 8) | vector[1] as u16;
-        // let mut volume_data_f16: Vec<half::f16> = vec![half::f16::from_f32_const(0.0); usize::try_from(dimensions.0 * dimensions.1 * dimensions.2).unwrap()];
-        
-        // let limit = volume_data_bytes.len() / 2;
-        // for i in 0..limit {
-        //     let number_u16 = ((volume_data_bytes[i * 2] as u16) << 8) | volume_data_bytes[i * 2 + 1] as u16;
-        //     let number_f16 = half::f16::from_f32(number_u16 as f32 / u16::MAX as f32);
-        //     volume_data_f16[i] = number_f16;
-        //     // println!("{}", half::f16::to_f32(number_f16).to_string());
-        // }
-
-        // volume_data_bytes = vec![63; usize::try_from(dimensions.0 * dimensions.1 * dimensions.2 * 2).unwrap()];
-
-        let limit = volume_data_bytes.len() / 2;
-        for i in 0..limit {
+        for i in 0..(volume_data_bytes.len() / 2) {
             let number_u16 = ((volume_data_bytes[i * 2] as u16) << 8) | volume_data_bytes[i * 2 + 1] as u16;
             let number_f16 = half::f16::from_f32(number_u16 as f32 / u16::MAX as f32);
             let bytes = half::f16::to_ne_bytes(number_f16);
             volume_data_bytes[i * 2] = bytes[0];
             volume_data_bytes[i * 2 + 1] = bytes[1];
-            // println!("{}", half::f16::to_f32(number_f16).to_string());
         }
 
-        let texture_size = wgpu::Extent3d {
-            width: dimensions.0,
-            height: dimensions.1,
-            depth_or_array_layers: dimensions.2,
-        };
-        let diffuse_texture = device.create_texture(
-            &wgpu::TextureDescriptor {
-                size: texture_size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D3,
-                // TODO: Handle conversion to/form R16Uint
-                // format: wgpu::TextureFormat::R16Uint,
-                format: wgpu::TextureFormat::R16Float,
-                // format: wgpu::TextureFormat::R16Unorm,
-                // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
-                // COPY_DST means that we want to copy data to this texture
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                label: Some("volume_data"),
-                view_formats: &[],
-            }
-        );
-        queue.write_texture(
-            // Tells wgpu where to copy the pixel data
-            wgpu::ImageCopyTexture {
-                texture: &diffuse_texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            // The actual pixel data
-            &volume_data_bytes,
-            // The layout of the texture
-            wgpu::ImageDataLayout {
-                offset: 0,
-                // needs to ba a multiple of 256 according to https://sotrh.github.io/learn-wgpu/beginner/tutorial5-textures/#getting-data-into-a-texture
-                // bytes_per_row: std::num::NonZeroU32::new(2 * dimensions.0),
-                // rows_per_image: std::num::NonZeroU32::new(dimensions.1),
-                bytes_per_row: Some(2 * dimensions.0),
-                rows_per_image: Some(dimensions.1),
-            },
-            texture_size,
-        );
-        // We don't need to configure the texture view much, so let's
-        // let wgpu define it.
-        let diffuse_texture_view = diffuse_texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let diffuse_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            ..Default::default()
-        });
+        let diffuse_texture = texture::Texture::from_f16_bytes(&device, &queue, &volume_data_bytes, &dimensions, Some(file_name)).unwrap();
+
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
@@ -209,11 +144,11 @@ impl State {
                     entries: &[
                         wgpu::BindGroupEntry {
                             binding: 0,
-                            resource: wgpu::BindingResource::TextureView(&diffuse_texture_view),
+                            resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
                         },
                         wgpu::BindGroupEntry {
                             binding: 1,
-                            resource: wgpu::BindingResource::Sampler(&diffuse_sampler),
+                            resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
                         }
                     ],
                     label: Some("diffuse_bind_group"),
@@ -306,6 +241,7 @@ impl State {
             index_buffer,
             num_indices,
             diffuse_bind_group,
+            diffuse_texture,
         }
     }
 
