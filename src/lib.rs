@@ -217,7 +217,7 @@ impl State {
             );
         
         let camera = Camera {
-            // position the camera 2 units back
+            // position the camera 5 units back
             // +z is out of the screen
             eye: (0.0, 0.0, 5.0).into(),
             // have it look at the origin
