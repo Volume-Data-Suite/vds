@@ -7,10 +7,12 @@ var<uniform> camera: CameraUniform;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
+    @location(1) tex_coords: vec2<f32>,
 }
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
+    @location(0) tex_coords: vec2<f32>,
 }
 
 @vertex
@@ -18,6 +20,7 @@ fn vs_main(
     model: VertexInput,
 ) -> VertexOutput {
     var out: VertexOutput;
+    out.tex_coords = model.tex_coords;
     out.clip_position = camera.view_proj * vec4<f32>(model.position, 1.0); // 2.
     return out;
 }
@@ -31,6 +34,7 @@ var s_diffuse: sampler;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let value = textureSample(t_diffuse, s_diffuse, vec3<f32>(1.0, 1.0, 1.0));
+    let position = in.tex_coords;
+    let value = textureSample(t_diffuse, s_diffuse, vec3<f32>(position.x, position.y, 0.5));
     return vec4<f32>(value[0], value[0], value[0], 1.0);
 }

@@ -166,9 +166,11 @@ impl State {
         let dimensions: (u32, u32, u32) = (256, 256, 109);
 
         for i in 0..(volume_data_bytes.len() / 2) {
-            let number_u16 = ((volume_data_bytes[i * 2] as u16) << 8) | volume_data_bytes[i * 2 + 1] as u16;
+            // TODO: Deal with endianess
+            // let number_u16 = ((volume_data_bytes[i * 2] as u16) << 8) | volume_data_bytes[i * 2 + 1] as u16;
+            let number_u16 = volume_data_bytes[i * 2] as u16 | (volume_data_bytes[i * 2 + 1] as u16) << 8;
             let number_f16 = half::f16::from_f32(number_u16 as f32 / u16::MAX as f32);
-            let bytes = half::f16::to_ne_bytes(number_f16);
+            let bytes = half::f16::to_le_bytes(number_f16);
             volume_data_bytes[i * 2] = bytes[0];
             volume_data_bytes[i * 2 + 1] = bytes[1];
         }
@@ -434,45 +436,54 @@ impl State {
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct Vertex {
     position: [f32; 3],
+    tex_coords: [f32; 2],
 }
 
 impl Vertex {
-    const ATTRIBS: [wgpu::VertexAttribute; 1] =
-        wgpu::vertex_attr_array![0 => Float32x3];
-
     fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &Self::ATTRIBS,
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x2, // NEW!
+                },
+            ]
         }
     }
 }
 
 const VERTICES: &[Vertex] = &[
-    Vertex { position: [-1.0, -1.0, 1.0] },   // 0
-    Vertex { position: [1.0, -1.0, 1.0] },    // 1
-    Vertex { position: [1.0, 1.0, 1.0] },     // 2
-    Vertex { position: [-1.0, 1.0, 1.0] },    // 3
-    Vertex { position: [-1.0, -1.0, -1.0] },  // 4
-    Vertex { position: [1.0, -1.0, -1.0] },   // 5
-    Vertex { position: [1.0, 1.0, -1.0] },    // 6
-    Vertex { position: [-1.0, 1.0, -1.0] },   // 7
+    Vertex { position: [-1.0, -1.0, 1.0], tex_coords: [0.0, 1.0] },   // 0
+    Vertex { position: [1.0, -1.0, 1.0], tex_coords: [1.0, 1.0] },    // 1
+    Vertex { position: [1.0, 1.0, 1.0], tex_coords: [1.0, 0.0] },     // 2
+    Vertex { position: [-1.0, 1.0, 1.0], tex_coords: [0.0, 0.0] },    // 3
+    // Vertex { position: [-1.0, -1.0, -1.0] },  // 4
+    // Vertex { position: [1.0, -1.0, -1.0] },   // 5
+    // Vertex { position: [1.0, 1.0, -1.0] },    // 6
+    // Vertex { position: [-1.0, 1.0, -1.0] },   // 7
 ];
 
 const INDICES: &[u16] = &[
     // front
     0, 1, 2, 2, 3, 0,
-    // right
-    1, 5, 6, 6, 2, 1,
-    // back
-    7, 6, 5, 5, 4, 7,
-    // left
-    4, 0, 3, 3, 7, 4,
-    // bottom
-    4, 5, 1, 1, 0, 4,
-    // top
-    3, 2, 6, 6, 7, 3
+    // // right
+    // 1, 5, 6, 6, 2, 1,
+    // // back
+    // 7, 6, 5, 5, 4, 7,
+    // // left
+    // 4, 0, 3, 3, 7, 4,
+    // // bottom
+    // 4, 5, 1, 1, 0, 4,
+    // // top
+    // 3, 2, 6, 6, 7, 3
 ];
 
 
