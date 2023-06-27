@@ -161,9 +161,9 @@ impl State {
         };
         surface.configure(&device, &config);
 
-        let file_name = "MRbrain_16bit_256x256x109.raw";
+        let file_name = "MRbrain_16bit_256x256x218.raw";
         let mut volume_data_bytes = get_file_as_byte_vec(file_name);
-        let dimensions: (u32, u32, u32) = (256, 256, 109);
+        let dimensions: (u32, u32, u32) = (256, 256, 218);
 
         for i in 0..(volume_data_bytes.len() / 2) {
             // TODO: Deal with endianess
