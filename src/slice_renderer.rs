@@ -449,6 +449,8 @@ impl Vertex {
 }
 
 const VERTICES: &[Vertex] = &[
+    // wgpu uses the coordinate systems of D3D and Metal
+    // https://github.com/gfx-rs/wgpu#coordinate-systems
     Vertex { position: [-1.0, -1.0, 1.0], tex_coords: [0.0, 1.0] },   // 0
     Vertex { position: [1.0, -1.0, 1.0], tex_coords: [1.0, 1.0] },    // 1
     Vertex { position: [1.0, 1.0, 1.0], tex_coords: [1.0, 0.0] },     // 2
