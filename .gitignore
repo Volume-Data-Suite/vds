@@ -44,4 +44,9 @@ Temporary Items
 # test data
 *.raw
 
+# web build artefacts
 pkg
+dist
+
+# VS Code
+.vscode
