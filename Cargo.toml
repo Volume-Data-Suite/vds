@@ -14,7 +14,7 @@ wgpu = ["eframe/wgpu", "bytemuck"]
 
 
 [dependencies]
-chrono = { version = "0.4", default-features = false, features = [
+chrono = { version = "0.4.26", default-features = false, features = [
   "js-sys",
   "wasmbind",
 ] }
@@ -28,28 +28,28 @@ eframe = { version = "0.22.0", default-features = false, features = [
     "persistence",   # Enable restoring app state when restarting the app.
 ] }
 
-log = "0.4"
-bytemuck = { version = "1.7.1", optional = true }
-anyhow = "1.0"
-cgmath = "0.18"
+log = "0.4.19"
+bytemuck = { version = "1.13.1", optional = true }
+anyhow = "1.0.72"
+cgmath = "0.18.0"
 half = "2.3.1"
-rfd = "0.11"
-regex = "1.8.4"
+rfd = "0.11.4"
+regex = "1.9.1"
 
 # feature "persistence":
-serde = { version = "1", optional = true, features = ["derive"] }
+serde = { version = "1.0.171", optional = true, features = ["derive"] }
 
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-env_logger = "0.10"
+env_logger = "0.10.0"
 
 # web:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2.87"
-wasm-bindgen-futures = "0.4"
-web-sys = { version = "0.3.61", features = ["Window", "Url", "File", "Blob", "HtmlAnchorElement", "BlobPropertyBag", "FilePropertyBag"] }
-js-sys = "0.3"
+wasm-bindgen-futures = "0.4.37"
+web-sys = { version = "0.3.64", features = ["Window", "Url", "File", "Blob", "HtmlAnchorElement", "BlobPropertyBag", "FilePropertyBag"] }
+js-sys = "0.3.64"
 
 [profile.release]
 opt-level = 2 # fast and small wasm
