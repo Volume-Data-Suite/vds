@@ -104,7 +104,7 @@ jobs:
       - name: Download and install Trunk binary
         run: wget -qO- https://github.com/thedodd/trunk/releases/latest/download/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf-
       - name: Build
-        run: ./trunk build
+        run: ./trunk build --release
       - name: Rename artifacts
         run: mv dist vds-web
       - name: Upload artifact
@@ -149,6 +149,8 @@ jobs:
         with:
           command: build
           args: --release --target x86_64-apple-darwin
+      - name: debug
+        run: find .
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
@@ -174,7 +176,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: vds-macos-arm64
-          path: ${{github.workspace}}/target/release/vds
+          path: target/release/vds
 
   build_windows:
     name: Build for Windows
