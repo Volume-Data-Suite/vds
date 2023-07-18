@@ -91,7 +91,7 @@ jobs:
           args: -- -D warnings
 
   trunk:
-    name: Build Website
+    name: Build for Web
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -107,7 +107,7 @@ jobs:
         run: ./trunk build
 
   build_linux_x86_64:
-    name: Build Linux x86_64 (Ubuntu)
+    name: Build for Linux x86_64 (Ubuntu)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -123,7 +123,7 @@ jobs:
           args: --release
 
   build_macos_intel:
-    name: Build macOS (Intel)
+    name: Build for macOS (Intel)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
@@ -139,7 +139,7 @@ jobs:
           args: --release --target x86_64-apple-darwin
 
   build_macos_arm64:
-    name: Build macOS (arm64)
+    name: Build for macOS (arm64)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
@@ -153,3 +153,18 @@ jobs:
         with:
           command: build
           args: --release --target aarch64-apple-darwin
+
+  build_windows:
+    name: Build for Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
