@@ -98,7 +98,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.71.0
+          toolchain: stable
           target: wasm32-unknown-unknown
           override: true
       - name: Download and install Trunk binary
@@ -155,7 +155,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: vds-macos-intel
-          path: ${{github.workspace}}/target/release/vds
+          path: ${{github.workspace}}/target/x86_64-apple-darwin/release/vds
 
   build_macos_arm64:
     name: Build for macOS (arm64)
@@ -176,7 +176,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: vds-macos-arm64
-          path: target/release/vds
+          path: ${{github.workspace}}/target/aarch64-apple-darwin/release/vds
 
   build_windows:
     name: Build for Windows
@@ -197,4 +197,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: vds-windows
-          path: ${{github.workspace}}/target/release/vds.exe
+          path: ${{github.workspace}}/target/x86_64-pc-windows-msvc/release/vds.exe
