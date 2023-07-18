@@ -32,7 +32,7 @@ impl Importer {
         let mut file = File::open(&file_path).expect("no file found");
         let metadata = std::fs::metadata(&file_path).expect("unable to read metadata");
         let mut buffer = vec![0; metadata.len() as usize];
-        file.read(&mut buffer).expect("buffer overflow");
+        file.read_exact(&mut buffer).expect("buffer overflow");
 
         buffer
     }
