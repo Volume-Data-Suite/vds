@@ -62,12 +62,3 @@ On Fedora Rawhide you need to run:
 2. It will generate a `dist` directory as a "static html" website
 3. Upload the `dist` directory to any of the numerous free hosting websites including [GitHub Pages](https://docs.github.com/en/free-pro-team@latest/github/working-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
 4. This repo already provides a [workflow](.github/workflows/deploy_github_pages.yml) that auto-deploys VDS to GitHub pages.
-
-### Building for native
-Run it locally with `cargo run --release`.
-
-### Building for web
-[trunk](https://trunkrs.dev/) can be used to compile `vds` to WASM and spin up a web server with hot reloading. Run it locally with `trunk serve`.
-
-Afterwards VDS can be viewed in a browser locally (http://127.0.0.1:8080/index.html). If you want to disable local caching, you can add '#dev' to the URL (http://127.0.0.1:8080/index.html#dev).
-
