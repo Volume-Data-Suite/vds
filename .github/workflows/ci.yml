@@ -149,8 +149,6 @@ jobs:
         with:
           command: build
           args: --release --target x86_64-apple-darwin
-      - name: debug
-        run: find .
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
