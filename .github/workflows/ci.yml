@@ -83,6 +83,7 @@ jobs:
           toolchain: stable
           override: true
           components: clippy
+      - run: sudo apt-get install librust-atk-dev
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
