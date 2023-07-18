@@ -110,6 +110,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
+          name: vds-web
           path: ${{github.workspace}}/vds-web
 
   build_linux_x86_64:
@@ -130,6 +131,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
+          name: vds-linux-x86-64
           path: ${{github.workspace}}/target/release/vds
 
   build_macos_intel:
@@ -150,6 +152,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
+          name: vds-macos-intel
           path: ${{github.workspace}}/target/release/vds
 
   build_macos_arm64:
@@ -170,6 +173,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
+          name: vds-macos-arm64
           path: ${{github.workspace}}/target/release/vds
 
   build_windows:
@@ -190,4 +194,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
+          name: vds-windows
           path: ${{github.workspace}}/target/release/vds.exe
