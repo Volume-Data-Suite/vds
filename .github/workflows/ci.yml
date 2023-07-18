@@ -105,6 +105,12 @@ jobs:
         run: wget -qO- https://github.com/thedodd/trunk/releases/latest/download/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf-
       - name: Build
         run: ./trunk build
+      - name: Rename artifacts
+        run: mv dist vds-web
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          path: ${{github.workspace}}/vds-web
 
   build_linux_x86_64:
     name: Build for Linux x86_64 (Ubuntu)
@@ -121,6 +127,10 @@ jobs:
         with:
           command: build
           args: --release
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          path: ${{github.workspace}}/target/release/vds
 
   build_macos_intel:
     name: Build for macOS (Intel)
@@ -137,6 +147,10 @@ jobs:
         with:
           command: build
           args: --release --target x86_64-apple-darwin
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          path: ${{github.workspace}}/target/release/vds
 
   build_macos_arm64:
     name: Build for macOS (arm64)
@@ -153,6 +167,10 @@ jobs:
         with:
           command: build
           args: --release --target aarch64-apple-darwin
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          path: ${{github.workspace}}/target/release/vds
 
   build_windows:
     name: Build for Windows
@@ -169,3 +187,7 @@ jobs:
         with:
           command: build
           args: --release --target x86_64-pc-windows-msvc
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          path: ${{github.workspace}}/target/release/vds.exe
