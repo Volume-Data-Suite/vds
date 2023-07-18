@@ -8,8 +8,10 @@ fn main() -> eframe::Result<()> {
 
     let options = eframe::NativeOptions {
         icon_data: Some(
-            eframe::IconData::try_from_png_bytes(&include_bytes!("../assets/maskable_icon_x512.png")[..])
-                .unwrap(),
+            eframe::IconData::try_from_png_bytes(
+                &include_bytes!("../assets/maskable_icon_x512.png")[..],
+            )
+            .unwrap(),
         ),
         drag_and_drop_support: true,
         ..Default::default()

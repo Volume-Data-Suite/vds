@@ -15,9 +15,9 @@ impl std::str::FromStr for VolumeDataFileType {
     type Err = ();
     fn from_str(input: &str) -> Result<VolumeDataFileType, Self::Err> {
         match input.to_lowercase().as_str() {
-            "raw"  => Ok(VolumeDataFileType::RAW3D),
+            "raw" => Ok(VolumeDataFileType::RAW3D),
             "raw3d" => Ok(VolumeDataFileType::RAW3D),
-            _      => Err(()),
+            _ => Err(()),
         }
     }
 }

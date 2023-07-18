@@ -17,7 +17,7 @@ pub struct State {
 /// Wraps many rendering apps into one for grid views and shared memory.
 pub struct WrapApp {
     state: State,
-    
+
     volume_texture: crate::apps::Texture,
     slice_renderer: Option<crate::apps::SliceRenderer>,
 }
@@ -31,7 +31,10 @@ impl WrapApp {
             slice_renderer: None,
         };
 
-        slf.slice_renderer = crate::apps::SliceRenderer::new(_cc.wgpu_render_state.as_ref().unwrap(), &slf.volume_texture);
+        slf.slice_renderer = crate::apps::SliceRenderer::new(
+            _cc.wgpu_render_state.as_ref().unwrap(),
+            &slf.volume_texture,
+        );
 
         #[cfg(feature = "persistence")]
         if let Some(storage) = _cc.storage {
@@ -43,7 +46,7 @@ impl WrapApp {
         slf
     }
 
-    pub fn update_volume_texture(&mut self, frame: &mut eframe::Frame){
+    pub fn update_volume_texture(&mut self, frame: &mut eframe::Frame) {
         let wgpu_render_state = eframe::Frame::wgpu_render_state(frame).unwrap();
         let device = &wgpu_render_state.device;
         let queue = &wgpu_render_state.queue;
@@ -51,9 +54,12 @@ impl WrapApp {
         let mut bytes = self.state.importer.item.data.as_mut().unwrap();
         let dimensions = self.state.importer.item.dimensions.unwrap();
         let label = Some("Volume Texture");
-        
-        self.volume_texture = crate::apps::Texture::from_u16_bytes(device, queue, &mut bytes, &dimensions, label).unwrap();
-        self.slice_renderer = crate::apps::SliceRenderer::new(wgpu_render_state, &self.volume_texture);
+
+        self.volume_texture =
+            crate::apps::Texture::from_u16_bytes(device, queue, &mut bytes, &dimensions, label)
+                .unwrap();
+        self.slice_renderer =
+            crate::apps::SliceRenderer::new(wgpu_render_state, &self.volume_texture);
         self.state.importer = crate::io::Importer::default();
     }
 }
@@ -153,7 +159,11 @@ impl WrapApp {
     }
 
     fn show_renderer(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let renderer = self.slice_renderer.as_mut().map(|app| app as &mut dyn eframe::App).unwrap();
+        let renderer = self
+            .slice_renderer
+            .as_mut()
+            .map(|app| app as &mut dyn eframe::App)
+            .unwrap();
         renderer.update(ctx, frame);
     }
 
@@ -193,7 +203,7 @@ impl WrapApp {
                     ui.close_menu();
                 }
             }
-            
+
             // if ui.button("Load Example...").clicked() {
             //     ui.close_menu();
             // }

@@ -135,15 +135,13 @@ impl BackendPanel {
         #[cfg(not(target_arch = "wasm32"))]
         {
             ui.horizontal(|ui| {
+                let mut fullscreen = frame.info().window_info.fullscreen;
+                if ui
+                    .checkbox(&mut fullscreen, "🗖 Fullscreen (F11)")
+                    .on_hover_text("Fullscreen the window")
+                    .changed()
                 {
-                    let mut fullscreen = frame.info().window_info.fullscreen;
-                    if ui
-                        .checkbox(&mut fullscreen, "🗖 Fullscreen (F11)")
-                        .on_hover_text("Fullscreen the window")
-                        .changed()
-                    {
-                        frame.set_fullscreen(fullscreen);
-                    }
+                    frame.set_fullscreen(fullscreen);
                 }
             });
 
@@ -214,10 +212,7 @@ impl BackendPanel {
 
         if self.run_mode == RunMode::Continuous {
             ui.label("Repainting the UI each frame.");
-            ui.label(format!(
-                "FPS: {:.1}",
-                self.frame_history.fps()
-            ));
+            ui.label(format!("FPS: {:.1}", self.frame_history.fps()));
         }
     }
 }

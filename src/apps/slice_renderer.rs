@@ -68,16 +68,8 @@ struct SliceRenderResources {
 
 impl SliceRenderResources {
     fn prepare(&self, _device: &wgpu::Device, queue: &wgpu::Queue, slice_position: f32) {
-        queue.write_buffer(
-            &self.index_buffer,
-            0,
-            bytemuck::cast_slice(INDICES),
-        );
-        queue.write_buffer(
-            &self.vertex_buffer,
-            0,
-            bytemuck::cast_slice(VERTICES),
-        );
+        queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(INDICES));
+        queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(VERTICES));
     }
 
     fn paint<'rp>(&'rp self, render_pass: &mut wgpu::RenderPass<'rp>) {
@@ -100,7 +92,10 @@ pub struct SliceRenderer {
 }
 
 impl SliceRenderer {
-    pub fn new<'a>(wgpu_render_state: &egui_wgpu::RenderState, texture: &crate::apps::Texture) -> Option<Self> {
+    pub fn new<'a>(
+        wgpu_render_state: &egui_wgpu::RenderState,
+        texture: &crate::apps::Texture,
+    ) -> Option<Self> {
         // Get the WGPU render state from the eframe creation context. This can also be retrieved
         // from `eframe::Frame` when you don't have a `CreationContext` available.
         // let wgpu_render_state = cc.wgpu_render_state.as_ref()?;
@@ -132,23 +127,21 @@ impl SliceRenderer {
                 label: Some("texture_bind_group_layout"),
             });
 
-        let texture_bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &texture_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&texture.view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&texture.sampler),
-                    }
-                ],
-                label: Some("diffuse_bind_group"),
-            }
-        );
-        
+        let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&texture.sampler),
+                },
+            ],
+            label: Some("diffuse_bind_group"),
+        });
+
         let camera = Camera {
             // position the camera 5 units back
             // +z is out of the screen
@@ -166,17 +159,15 @@ impl SliceRenderer {
         let mut camera_uniform = CameraUniform::new();
         camera_uniform.update_view_proj(&camera);
 
-        let camera_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Camera Buffer"),
-                contents: bytemuck::cast_slice(&[camera_uniform]),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            }
-        );
+        let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Camera Buffer"),
+            contents: bytemuck::cast_slice(&[camera_uniform]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
 
-        let camera_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
+        let camera_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
@@ -185,46 +176,38 @@ impl SliceRenderer {
                         min_binding_size: None,
                     },
                     count: None,
-                }
-            ],
-            label: Some("camera_bind_group_layout"),
-        });
+                }],
+                label: Some("camera_bind_group_layout"),
+            });
 
         let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &camera_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: camera_buffer.as_entire_binding(),
-                }
-            ],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            }],
             label: Some("camera_bind_group"),
         });
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
-        });  
+        });
 
         let render_pipeline_layout =
-        device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[
-                &texture_bind_group_layout,
-                &camera_bind_group_layout,
-            ],
-            push_constant_ranges: &[],
-        });
-      
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Render Pipeline Layout"),
+                bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout],
+                push_constant_ranges: &[],
+            });
+
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[
-                    Vertex::desc(),
-                ],
+                buffers: &[Vertex::desc()],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -245,28 +228,24 @@ impl SliceRenderer {
             },
             depth_stencil: None, // 1.
             multisample: wgpu::MultisampleState {
-                count: 1, // 2.
-                mask: !0, // 3.
+                count: 1,                         // 2.
+                mask: !0,                         // 3.
                 alpha_to_coverage_enabled: false, // 4.
             },
             multiview: None, // 5.
         });
 
-        let vertex_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(VERTICES),
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            }
-        );
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::cast_slice(VERTICES),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        });
 
-        let index_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(INDICES),
-                usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
-            }
-        );
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Index Buffer"),
+            contents: bytemuck::cast_slice(INDICES),
+            usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+        });
 
         // Because the graphics pipeline must have the same lifetime as the egui render pass,
         // instead of storing the pipeline in our `Custom3D` struct, we insert it into the
@@ -290,7 +269,6 @@ impl SliceRenderer {
     }
 }
 
-
 impl eframe::App for SliceRenderer {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -305,13 +283,11 @@ impl eframe::App for SliceRenderer {
     }
 }
 
-
 impl SliceRenderer {
     fn custom_painting(&mut self, ui: &mut egui::Ui) {
         // TODO: Deal with resize and aspect ratio
         let availbale_size = ui.available_size_before_wrap();
-        let (rect, response) =
-            ui.allocate_exact_size(availbale_size, egui::Sense::drag());
+        let (rect, response) = ui.allocate_exact_size(availbale_size, egui::Sense::drag());
 
         let slice_position: f32 = 0.0;
 
@@ -377,7 +353,7 @@ impl Vertex {
                     shader_location: 1,
                     format: wgpu::VertexFormat::Float32x2, // NEW!
                 },
-            ]
+            ],
         }
     }
 }
@@ -385,19 +361,32 @@ impl Vertex {
 const VERTICES: &[Vertex] = &[
     // wgpu uses the coordinate systems of D3D and Metal
     // https://github.com/gfx-rs/wgpu#coordinate-systems
-    Vertex { position: [-1.0, -1.0, 1.0], tex_coords: [0.0, 1.0] },   // 0
-    Vertex { position: [1.0, -1.0, 1.0], tex_coords: [1.0, 1.0] },    // 1
-    Vertex { position: [1.0, 1.0, 1.0], tex_coords: [1.0, 0.0] },     // 2
-    Vertex { position: [-1.0, 1.0, 1.0], tex_coords: [0.0, 0.0] },    // 3
-    // Vertex { position: [-1.0, -1.0, -1.0] },  // 4
-    // Vertex { position: [1.0, -1.0, -1.0] },   // 5
-    // Vertex { position: [1.0, 1.0, -1.0] },    // 6
-    // Vertex { position: [-1.0, 1.0, -1.0] },   // 7
+    Vertex {
+        position: [-1.0, -1.0, 1.0],
+        tex_coords: [0.0, 1.0],
+    }, // 0
+    Vertex {
+        position: [1.0, -1.0, 1.0],
+        tex_coords: [1.0, 1.0],
+    }, // 1
+    Vertex {
+        position: [1.0, 1.0, 1.0],
+        tex_coords: [1.0, 0.0],
+    }, // 2
+    Vertex {
+        position: [-1.0, 1.0, 1.0],
+        tex_coords: [0.0, 0.0],
+    }, // 3
+       // Vertex { position: [-1.0, -1.0, -1.0] },  // 4
+       // Vertex { position: [1.0, -1.0, -1.0] },   // 5
+       // Vertex { position: [1.0, 1.0, -1.0] },    // 6
+       // Vertex { position: [-1.0, 1.0, -1.0] },   // 7
 ];
 
 const INDICES: &[u16] = &[
     // front
-    0, 1, 2, 2, 3, 0,
+    0, 1, 2, 2, 3,
+    0,
     // // right
     // 1, 5, 6, 6, 2, 1,
     // // back
