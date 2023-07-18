@@ -1,9 +1,9 @@
 use std::fmt;
 
-pub enum Endianness {
-    LitteEndian,
-    BigEndian,
-}
+// pub enum Endianness {
+//     LitteEndian,
+//     BigEndian,
+// }
 
 #[derive(Debug, PartialEq)]
 pub enum VolumeDataFileType {

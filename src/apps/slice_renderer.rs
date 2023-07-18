@@ -4,7 +4,6 @@ use eframe::{
     egui_wgpu::wgpu::util::DeviceExt,
     egui_wgpu::{self, wgpu},
 };
-use egui::Rect;
 
 // The coordinate system in Wgpu is based on DirectX, and Metal's coordinate systems. That means that in normalized device coordinates (opens new window)the x axis and y axis are in the range of -1.0 to +1.0, and the z axis is 0.0 to +1.0. The cgmath crate (as well as most game math crates) is built for OpenGL's coordinate system. This matrix will scale and translate our scene from OpenGL's coordinate system to WGPU's. We'll define it as follows.
 // We don't explicitly need the OPENGL_TO_WGPU_MATRIX, but models centered on (0, 0, 0) will be halfway inside the clipping area. This is only an issue if you aren't using a camera matrix.
@@ -31,7 +30,7 @@ impl Camera {
     fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
         let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
         let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
-        return OPENGL_TO_WGPU_MATRIX * proj * view;
+        OPENGL_TO_WGPU_MATRIX * proj * view
     }
 }
 
@@ -67,7 +66,7 @@ struct SliceRenderResources {
 }
 
 impl SliceRenderResources {
-    fn prepare(&self, _device: &wgpu::Device, queue: &wgpu::Queue, slice_position: f32) {
+    fn prepare(&self, _device: &wgpu::Device, queue: &wgpu::Queue, _slice_position: f32) {
         queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(INDICES));
         queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(VERTICES));
     }
@@ -87,12 +86,12 @@ impl SliceRenderResources {
 }
 
 pub struct SliceRenderer {
-    size: Rect,
-    slice_position: f32,
+    // size: Rect,
+    // slice_position: f32,
 }
 
 impl SliceRenderer {
-    pub fn new<'a>(
+    pub fn new(
         wgpu_render_state: &egui_wgpu::RenderState,
         texture: &crate::apps::Texture,
     ) -> Option<Self> {
@@ -150,7 +149,7 @@ impl SliceRenderer {
             target: (0.0, 0.0, 0.0).into(),
             // which way is "up"
             up: cgmath::Vector3::unit_y(),
-            aspect: 1.0 as f32,
+            aspect: 1.0_f32,
             fovy: 45.0,
             znear: 0.1,
             zfar: 100.0,
@@ -263,8 +262,8 @@ impl SliceRenderer {
             });
 
         Some(Self {
-            size: Rect::EVERYTHING,
-            slice_position: 0.0,
+            // size: Rect::EVERYTHING,
+            // slice_position: 0.0,
         })
     }
 }
@@ -287,7 +286,7 @@ impl SliceRenderer {
     fn custom_painting(&mut self, ui: &mut egui::Ui) {
         // TODO: Deal with resize and aspect ratio
         let availbale_size = ui.available_size_before_wrap();
-        let (rect, response) = ui.allocate_exact_size(availbale_size, egui::Sense::drag());
+        let (rect, _response) = ui.allocate_exact_size(availbale_size, egui::Sense::drag());
 
         let slice_position: f32 = 0.0;
 

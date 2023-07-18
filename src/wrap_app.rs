@@ -51,12 +51,12 @@ impl WrapApp {
         let device = &wgpu_render_state.device;
         let queue = &wgpu_render_state.queue;
 
-        let mut bytes = self.state.importer.item.data.as_mut().unwrap();
+        let bytes = self.state.importer.item.data.as_mut().unwrap();
         let dimensions = self.state.importer.item.dimensions.unwrap();
         let label = Some("Volume Texture");
 
         self.volume_texture =
-            crate::apps::Texture::from_u16_bytes(device, queue, &mut bytes, &dimensions, label)
+            crate::apps::Texture::from_u16_bytes(device, queue, bytes, &dimensions, label)
                 .unwrap();
         self.slice_renderer =
             crate::apps::SliceRenderer::new(wgpu_render_state, &self.volume_texture);
@@ -282,10 +282,7 @@ impl WrapApp {
                     Some(std::path::PathBuf::from_str("???").unwrap())
                 };
 
-                self.state.importer.item.data = match &file.bytes {
-                    Some(bytes) => Some(bytes.to_owned().to_vec()),
-                    None => None,
-                };
+                self.state.importer.item.data = file.bytes.as_ref().map(|bytes| bytes.to_owned().to_vec());
 
                 self.state.importer.load_dialog(VolumeDataFileType::RAW3D);
             }

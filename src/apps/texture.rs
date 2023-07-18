@@ -18,13 +18,13 @@ impl Texture {
         let device = &wgpu_render_state.device;
         let queue = &wgpu_render_state.queue;
 
-        return Self::from_u16_bytes(
+        Self::from_u16_bytes(
             device,
             queue,
             &mut volume_data_bytes,
             &dimensions,
             Some(file_name),
-        );
+        )
     }
     pub fn from_u16_bytes(
         device: &wgpu::Device,
@@ -74,7 +74,7 @@ impl Texture {
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
             },
-            &bytes,
+            bytes,
             wgpu::ImageDataLayout {
                 offset: 0,
                 // needs to ba a multiple of 256 according to https://sotrh.github.io/learn-wgpu/beginner/tutorial5-textures/#getting-data-into-a-texture
