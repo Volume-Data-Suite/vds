@@ -48,5 +48,9 @@ Temporary Items
 pkg
 dist
 
+# macOS build artifacts
+*.app
+*.dmg
+
 # VS Code
 .vscode
