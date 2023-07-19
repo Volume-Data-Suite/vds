@@ -149,15 +149,18 @@ jobs:
         with:
           command: build
           args: --release --target x86_64-apple-darwin
-      - name: Install create-dmg
-        run: brew install create-dmg
-      - name: Build App Bundle and create Disk Image
-        run: sh assets/macos_bundle/build_dmg.sh
+      - name: Build App Bundle
+        run: sh assets/macos_bundle/build_app_bundle.sh
+      # TODO: Needs proper a signature to work on other peoples computers
+      # - name: Install create-dmg
+      #   run: brew install create-dmg
+      # - name: Create Disk Image
+      #   run: sh assets/macos_bundle/build_dmg.sh
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: vds-macos-intel
-          path: "${{github.workspace}}/Volume Data Suite.dmg"
+          path: "${{github.workspace}}/Volume Data Suite.app"
 
   build_macos_arm64:
     name: Build for macOS (arm64)
@@ -174,15 +177,18 @@ jobs:
         with:
           command: build
           args: --release --target aarch64-apple-darwin
-      - name: Install create-dmg
-        run: brew install create-dmg
-      - name: Build App Bundle and create Disk Image
-        run: sh assets/macos_bundle/build_dmg.sh
+      - name: Build App Bundle
+        run: sh assets/macos_bundle/build_app_bundle.sh
+      # TODO: Needs proper a signature to work on other peoples computers
+      # - name: Install create-dmg
+      #   run: brew install create-dmg
+      # - name: Create Disk Image
+      #   run: sh assets/macos_bundle/build_dmg.sh
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: vds-macos-arm64
-          path: "${{github.workspace}}/Volume Data Suite.dmg"
+          path: "${{github.workspace}}/Volume Data Suite.app"
 
   build_windows:
     name: Build for Windows
