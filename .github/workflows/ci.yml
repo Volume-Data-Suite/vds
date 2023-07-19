@@ -171,7 +171,7 @@ jobs:
         with:
           profile: minimal
           target: aarch64-apple-darwin
-          toolchain: stable
+          toolchain: 1.71.0
           override: true
       - uses: actions-rs/cargo@v1
         with:

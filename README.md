@@ -30,7 +30,7 @@ Currently the volume data can be visualized as:
 - 2D Slices (X-Axis only)
 
 ## Development
-VDS is written in [Rust](https://www.rust-lang.org/) and shaders are written [WGSL](https://www.w3.org/TR/WGSL/).
+VDS is written in [Rust](https://www.rust-lang.org/) and shaders are written in [WGSL](https://www.w3.org/TR/WGSL/).
 
 Make sure you are using the latest version of stable rust by running `rustup update`. VDS requires a proper graphics driver that provides at least one of the [supported graphics APIs](#cross-platform-support).
 
