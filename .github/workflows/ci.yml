@@ -186,7 +186,7 @@ jobs:
         run: sh assets/macos_bundle/build_dmg.sh
       # It appears that the .zip process of GitHub itself breaks App Bundle and removes the executable properties
       - name: Zip App Bundle
-        run: zip vds.zip bundle
+        run: zip -r vds.zip bundle
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
