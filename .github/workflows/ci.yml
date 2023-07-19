@@ -184,6 +184,14 @@ jobs:
         run: brew install create-dmg
       - name: Create Disk Image
         run: sh assets/macos_bundle/build_dmg.sh
+      # It appears that the .zip process of GitHub itself breaks App Bundle and removes the executable properties
+      - name: Zip App Bundle
+        run: zip vds.zip bundle
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: vds-macos-arm64-zip
+          path: "${{github.workspace}}/vds.zip"
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
