@@ -180,15 +180,25 @@ jobs:
       - name: Build App Bundle
         run: sh assets/macos_bundle/build_app_bundle.sh
       # TODO: Needs proper a signature to work on other peoples computers
-      # - name: Install create-dmg
-      #   run: brew install create-dmg
-      # - name: Create Disk Image
-      #   run: sh assets/macos_bundle/build_dmg.sh
+      - name: Install create-dmg
+        run: brew install create-dmg
+      - name: Create Disk Image
+        run: sh assets/macos_bundle/build_dmg.sh
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: vds-macos-arm64-bin
+          path: "${{github.workspace}}/target/aarch64-apple-darwin/release/vds"
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: vds-macos-arm64
           path: "${{github.workspace}}/bundle"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: vds-macos-arm64-dmg
+          path: "${{github.workspace}}/Volume Data Suite.dmg"
 
   build_windows:
     name: Build for Windows
