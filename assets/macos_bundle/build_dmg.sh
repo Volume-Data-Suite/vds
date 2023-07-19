@@ -6,6 +6,20 @@ MACOS_BIN_NAME=vds
 MACOS_APP_NAME='Volume Data Suite'
 MACOS_APP_DIR="$MACOS_APP_NAME.app"
 
+# Check if the file "vds" exists in the target/release directory
+if [ -f "target/release/vds" ]; then
+    MACOS_BIN_PATH="target/release"
+# Check if the file "vds" exists in the target/x86_64-apple-darwin/release directory
+elif [ -f "target/x86_64-apple-darwin/release/vds" ]; then
+    MACOS_BIN_PATH="target/x86_64-apple-darwin/release"
+# Check if the file "vds" exists in the target/aarch64-apple-darwin/release directory
+elif [ -f "target/aarch64-apple-darwin/release/vds" ]; then
+    MACOS_BIN_PATH="target/aarch64-apple-darwin/release"
+else
+    echo "Error: The file 'vds' was not found in any of the specified paths."
+    exit 1
+fi
+
 echo "Creating app directory structure"
 rm -rf "$MACOS_APP_DIR"
 rm -rf *.dmg
@@ -20,7 +34,7 @@ cp assets/macos_bundle/AppIcon.icns "$MACOS_APP_DIR/Contents/Resources/AppIcon.i
 
 echo "Copying binary"
 MACOS_APP_BIN="$MACOS_APP_DIR/Contents/MacOS/$MACOS_APP_NAME"
-cp target/release/$MACOS_BIN_NAME "$MACOS_APP_BIN"
+cp $MACOS_BIN_PATH/$MACOS_BIN_NAME "$MACOS_APP_BIN"
 
 echo "Collecting content for DMG file"
 mkdir -p bundle
