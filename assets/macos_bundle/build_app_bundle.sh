@@ -35,3 +35,7 @@ cp assets/macos_bundle/AppIcon.icns "$MACOS_APP_DIR/Contents/Resources/AppIcon.i
 echo "Copying binary"
 MACOS_APP_BIN="$MACOS_APP_DIR/Contents/MacOS/$MACOS_APP_NAME"
 cp $MACOS_BIN_PATH/$MACOS_BIN_NAME "$MACOS_APP_BIN"
+
+echo "Perpare for further processing"
+mkdir -p bundle
+mv "$MACOS_APP_DIR" bundle/"$MACOS_APP_DIR"

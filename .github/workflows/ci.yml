@@ -160,7 +160,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: vds-macos-intel
-          path: "${{github.workspace}}/Volume Data Suite.app"
+          path: "${{github.workspace}}/bundle"
 
   build_macos_arm64:
     name: Build for macOS (arm64)
@@ -188,7 +188,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: vds-macos-arm64
-          path: "${{github.workspace}}/Volume Data Suite.app"
+          path: "${{github.workspace}}/bundle"
 
   build_windows:
     name: Build for Windows

@@ -5,10 +5,6 @@ set -e
 MACOS_APP_NAME='Volume Data Suite'
 MACOS_APP_DIR="$MACOS_APP_NAME.app"
 
-echo "Collecting content for DMG file"
-mkdir -p bundle
-mv "$MACOS_APP_DIR" bundle/"$MACOS_APP_DIR"
-
 create-dmg \
     --volname "$MACOS_APP_NAME" \
     --background assets/macos_bundle/DiskImageBackground.png \
