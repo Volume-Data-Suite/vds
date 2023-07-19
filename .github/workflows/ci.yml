@@ -167,12 +167,12 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
-      # - uses: actions-rs/toolchain@v1
-      #   with:
-      #     profile: minimal
-      #     target: aarch64-apple-darwin
-      #     toolchain: 1.71.0
-      #     override: true
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          target: aarch64-apple-darwin
+          toolchain: stable
+          override: true
       - uses: actions-rs/cargo@v1
         with:
           command: build
