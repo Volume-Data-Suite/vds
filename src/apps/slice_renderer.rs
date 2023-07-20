@@ -61,14 +61,21 @@ struct SliceRenderResources {
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
+    uniform_buffer_slice_position: wgpu::Buffer,
     texture_bind_group: wgpu::BindGroup,
     camera_bind_group: wgpu::BindGroup,
+    bind_group_slice_position: wgpu::BindGroup,
 }
 
 impl SliceRenderResources {
-    fn prepare(&self, _device: &wgpu::Device, queue: &wgpu::Queue, _slice_position: f32) {
+    fn prepare(&self, _device: &wgpu::Device, queue: &wgpu::Queue, slice_position: f32) {
         queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(INDICES));
         queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(VERTICES));
+        queue.write_buffer(
+            &self.uniform_buffer_slice_position,
+            0,
+            bytemuck::cast_slice(&[slice_position]),
+        );
     }
 
     fn paint<'rp>(&'rp self, render_pass: &mut wgpu::RenderPass<'rp>) {
@@ -76,6 +83,8 @@ impl SliceRenderResources {
 
         // camera
         render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+        // slice position
+        render_pass.set_bind_group(2, &self.bind_group_slice_position, &[]);
         // volume data
         render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
@@ -87,7 +96,7 @@ impl SliceRenderResources {
 
 pub struct SliceRenderer {
     // size: Rect,
-    // slice_position: f32,
+    slice_position: f32,
 }
 
 impl SliceRenderer {
@@ -188,6 +197,41 @@ impl SliceRenderer {
             label: Some("camera_bind_group"),
         });
 
+        let slice_position: f32 = 0.5;
+
+        let uniform_buffer_slice_position =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Slice position"),
+                contents: bytemuck::cast_slice(&[slice_position, 0.0, 0.0, 0.0]), // 16 bytes aligned!
+                // Mapping at creation (as done by the create_buffer_init utility) doesn't require us to to add the MAP_WRITE usage
+                // (this *happens* to workaround this bug )
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
+            });
+
+        let bind_group_layout_slice_position =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Slice position"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
+
+        let bind_group_slice_position = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Slice position"),
+            layout: &bind_group_layout_slice_position,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer_slice_position.as_entire_binding(),
+            }],
+        });
+
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
@@ -196,7 +240,11 @@ impl SliceRenderer {
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout],
+                bind_group_layouts: &[
+                    &texture_bind_group_layout,
+                    &camera_bind_group_layout,
+                    &bind_group_layout_slice_position,
+                ],
                 push_constant_ranges: &[],
             });
 
@@ -257,13 +305,15 @@ impl SliceRenderer {
                 render_pipeline,
                 vertex_buffer,
                 index_buffer,
+                uniform_buffer_slice_position,
                 texture_bind_group,
                 camera_bind_group,
+                bind_group_slice_position,
             });
 
         Some(Self {
             // size: Rect::EVERYTHING,
-            // slice_position: 0.0,
+            slice_position: slice_position,
         })
     }
 }
@@ -286,9 +336,12 @@ impl SliceRenderer {
     fn custom_painting(&mut self, ui: &mut egui::Ui) {
         // TODO: Deal with resize and aspect ratio
         let availbale_size = ui.available_size_before_wrap();
-        let (rect, _response) = ui.allocate_exact_size(availbale_size, egui::Sense::drag());
+        let (rect, response) = ui.allocate_exact_size(availbale_size, egui::Sense::drag());
 
-        let slice_position: f32 = 0.0;
+        self.slice_position += response.drag_delta().y * 0.01;
+
+        // Clone locals so we can move them into the paint callback:
+        let slice_position = self.slice_position;
 
         // TODO: Implement slice index update here like this:
         // self.angle += response.drag_delta().x * 0.01;
