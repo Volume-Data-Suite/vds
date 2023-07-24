@@ -313,7 +313,7 @@ impl SliceRenderer {
 
         Some(Self {
             // size: Rect::EVERYTHING,
-            slice_position: slice_position,
+            slice_position,
         })
     }
 }
