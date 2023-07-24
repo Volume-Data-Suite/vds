@@ -20,6 +20,7 @@ pub struct ImportItem {
 pub struct Importer {
     visible: bool,
     loading: bool,
+    pub show_drag_and_drop: bool,
     pub new_data_available: bool,
     pub item: ImportItem,
 }

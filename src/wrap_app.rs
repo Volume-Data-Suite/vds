@@ -199,6 +199,7 @@ impl WrapApp {
             {
                 if ui.button("Open file...").clicked() {
                     // show drag and drop overlay
+                    self.state.importer.show_drag_and_drop = true;
                     ui.close_menu();
                 }
             }
@@ -237,10 +238,18 @@ impl WrapApp {
         use egui::*;
         use std::fmt::Write as _;
 
+        if ctx.input(|i| i.key_pressed(Key::Escape)) {
+            self.state.importer.show_drag_and_drop = false;
+        }
+
         // Preview hovering files:
-        if !ctx.input(|i| i.raw.hovered_files.is_empty()) {
+        if !ctx.input(|i| i.raw.hovered_files.is_empty()) || self.state.importer.show_drag_and_drop
+        {
             let text = ctx.input(|i| {
+                #[cfg(not(target_arch = "wasm32"))]
                 let mut text = "Dropping file:\n".to_owned();
+                #[cfg(target_arch = "wasm32")]
+                let mut text = "Simply drag and drop your file here to import.\n".to_owned();
                 for file in &i.raw.hovered_files {
                     if let Some(path) = &file.path {
                         write!(text, "\n{}", path.display()).ok();
@@ -285,6 +294,8 @@ impl WrapApp {
                     file.bytes.as_ref().map(|bytes| bytes.to_owned().to_vec());
 
                 self.state.importer.load_dialog(VolumeDataFileType::RAW3D);
+
+                self.state.importer.show_drag_and_drop = false;
             }
         });
     }
