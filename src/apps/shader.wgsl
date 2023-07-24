@@ -1,7 +1,7 @@
 // Vertex shader
 
 @group(1) @binding(0)
-var<uniform> view_projection_matrix: mat4x4<f32>;
+var<uniform> scale_factor: vec3<f32>;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
@@ -18,8 +18,8 @@ fn vs_main(
     model: VertexInput,
 ) -> VertexOutput {
     var out: VertexOutput;
-    out.tex_coords = model.tex_coords;
-    out.clip_position = view_projection_matrix * vec4<f32>(model.position, 1.0);
+    out.tex_coords = 0.5 * vec2(model.position.x, model.position.y) + 0.5;
+    out.clip_position = vec4<f32>(scale_factor * model.position, 1.0);
     return out;
 }
 

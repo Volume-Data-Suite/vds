@@ -5,55 +5,17 @@ use eframe::{
     egui_wgpu::{self, wgpu},
 };
 
-// The coordinate system in Wgpu is based on DirectX, and Metal's coordinate systems. That means that in normalized device coordinates (opens new window)the x axis and y axis are in the range of -1.0 to +1.0, and the z axis is 0.0 to +1.0. The cgmath crate (as well as most game math crates) is built for OpenGL's coordinate system. This matrix will scale and translate our scene from OpenGL's coordinate system to WGPU's. We'll define it as follows.
-// We don't explicitly need the OPENGL_TO_WGPU_MATRIX, but models centered on (0, 0, 0) will be halfway inside the clipping area. This is only an issue if you aren't using a camera matrix.
-// https://sotrh.github.io/learn-wgpu/beginner/tutorial6-uniforms/#a-perspective-camera
-#[rustfmt::skip]
-pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
-    1.0, 0.0, 0.0, 0.0,
-    0.0, 1.0, 0.0, 0.0,
-    0.0, 0.0, 0.5, 0.0,
-    0.0, 0.0, 0.5, 1.0,
-);
-
-struct Camera {
-    eye: cgmath::Point3<f32>,
-    target: cgmath::Point3<f32>,
-    up: cgmath::Vector3<f32>,
-    aspect: f32,
-    fovy: f32,
-    znear: f32,
-    zfar: f32,
-}
-
-impl Camera {
-    fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
-        let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
-        let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
-        OPENGL_TO_WGPU_MATRIX * proj * view
-    }
-}
-
 // We need this for Rust to store our data correctly for the shaders
 #[repr(C)]
 // This is so we can store this in a buffer
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct CameraUniform {
-    // We can't use cgmath with bytemuck directly so we'll have
-    // to convert the Matrix4 into a 4x4 f32 array
-    view_proj: [[f32; 4]; 4],
+struct Vector3 {
+    data: [f32; 3],
 }
 
-impl CameraUniform {
-    fn new() -> Self {
-        use cgmath::SquareMatrix;
-        Self {
-            view_proj: cgmath::Matrix4::identity().into(),
-        }
-    }
-
-    fn update_view_proj(&mut self, camera: &Camera) {
-        self.view_proj = camera.build_view_projection_matrix().into();
+impl Vector3 {
+    fn new(x: f32, y: f32, z: f32) -> Self {
+        Self { data: [x, y, z] }
     }
 }
 
@@ -62,15 +24,27 @@ struct SliceRenderResources {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     uniform_buffer_slice_position: wgpu::Buffer,
+    uniform_buffer_fullscreen_factor: wgpu::Buffer,
     texture_bind_group: wgpu::BindGroup,
-    camera_bind_group: wgpu::BindGroup,
+    fullscreen_factor_bind_group: wgpu::BindGroup,
     bind_group_slice_position: wgpu::BindGroup,
 }
 
 impl SliceRenderResources {
-    fn prepare(&self, _device: &wgpu::Device, queue: &wgpu::Queue, slice_position: f32) {
+    fn prepare(
+        &self,
+        _device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        slice_position: f32,
+        fullscreen_factor_uniform: Vector3,
+    ) {
         queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(INDICES));
         queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(VERTICES));
+        queue.write_buffer(
+            &self.uniform_buffer_fullscreen_factor,
+            0,
+            bytemuck::cast_slice(&[fullscreen_factor_uniform]),
+        );
         queue.write_buffer(
             &self.uniform_buffer_slice_position,
             0,
@@ -81,8 +55,8 @@ impl SliceRenderResources {
     fn paint<'rp>(&'rp self, render_pass: &mut wgpu::RenderPass<'rp>) {
         render_pass.set_pipeline(&self.render_pipeline);
 
-        // camera
-        render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+        // fullscreen_factor
+        render_pass.set_bind_group(1, &self.fullscreen_factor_bind_group, &[]);
         // slice position
         render_pass.set_bind_group(2, &self.bind_group_slice_position, &[]);
         // volume data
@@ -97,9 +71,26 @@ impl SliceRenderResources {
 pub struct SliceRenderer {
     // size: Rect,
     slice_position: f32,
+    scale: egui::Rect,
 }
 
 impl SliceRenderer {
+    fn fullscreen_factor(viewport: egui::Rect, volume: egui::Rect) -> Vector3 {
+        let volume_aspect_ratio = volume.width() / volume.height();
+        let viewport_aspect_ratio = viewport.width() / viewport.height();
+
+        let mut scale_x: f32 = 1.0;
+        let mut scale_y: f32 = 1.0;
+
+        if volume_aspect_ratio > viewport_aspect_ratio {
+            scale_y = viewport_aspect_ratio / volume_aspect_ratio;
+        } else {
+            scale_x = volume_aspect_ratio / viewport_aspect_ratio;
+        }
+
+        Vector3::new(scale_x, scale_y, 1.0)
+    }
+
     pub fn new(
         wgpu_render_state: &egui_wgpu::RenderState,
         texture: &crate::apps::Texture,
@@ -150,30 +141,16 @@ impl SliceRenderer {
             label: Some("diffuse_bind_group"),
         });
 
-        let camera = Camera {
-            // position the camera 5 units back
-            // +z is out of the screen
-            eye: (0.0, 0.0, 5.0).into(),
-            // have it look at the origin
-            target: (0.0, 0.0, 0.0).into(),
-            // which way is "up"
-            up: cgmath::Vector3::unit_y(),
-            aspect: 1.0_f32,
-            fovy: 45.0,
-            znear: 0.1,
-            zfar: 100.0,
-        };
+        let fullscreen_factor = Vector3::new(1.0, 1.0, 1.0);
 
-        let mut camera_uniform = CameraUniform::new();
-        camera_uniform.update_view_proj(&camera);
+        let uniform_buffer_fullscreen_factor =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("fullscreen_factor Buffer"),
+                contents: bytemuck::cast_slice(&[fullscreen_factor]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
 
-        let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Camera Buffer"),
-            contents: bytemuck::cast_slice(&[camera_uniform]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
-        let camera_bind_group_layout =
+        let fullscreen_factor_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
@@ -185,16 +162,16 @@ impl SliceRenderer {
                     },
                     count: None,
                 }],
-                label: Some("camera_bind_group_layout"),
+                label: Some("fullscreen_factor_bind_group_layout"),
             });
 
-        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &camera_bind_group_layout,
+        let fullscreen_factor_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &fullscreen_factor_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: camera_buffer.as_entire_binding(),
+                resource: uniform_buffer_fullscreen_factor.as_entire_binding(),
             }],
-            label: Some("camera_bind_group"),
+            label: Some("fullscreen_factor_bind_group"),
         });
 
         let slice_position: f32 = 0.5;
@@ -202,7 +179,7 @@ impl SliceRenderer {
         let uniform_buffer_slice_position =
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Slice position"),
-                contents: bytemuck::cast_slice(&[slice_position, 0.0, 0.0, 0.0]), // 16 bytes aligned!
+                contents: bytemuck::cast_slice(&[slice_position]),
                 // Mapping at creation (as done by the create_buffer_init utility) doesn't require us to to add the MAP_WRITE usage
                 // (this *happens* to workaround this bug )
                 usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
@@ -242,7 +219,7 @@ impl SliceRenderer {
                 label: Some("Render Pipeline Layout"),
                 bind_group_layouts: &[
                     &texture_bind_group_layout,
-                    &camera_bind_group_layout,
+                    &fullscreen_factor_bind_group_layout,
                     &bind_group_layout_slice_position,
                 ],
                 push_constant_ranges: &[],
@@ -306,14 +283,16 @@ impl SliceRenderer {
                 vertex_buffer,
                 index_buffer,
                 uniform_buffer_slice_position,
+                uniform_buffer_fullscreen_factor,
                 texture_bind_group,
-                camera_bind_group,
+                fullscreen_factor_bind_group,
                 bind_group_slice_position,
             });
 
         Some(Self {
             // size: Rect::EVERYTHING,
             slice_position,
+            scale: egui::Rect::from_two_pos(egui::pos2(-1.0, -1.0), egui::pos2(1.0, 1.0)),
         })
     }
 }
@@ -343,11 +322,7 @@ impl SliceRenderer {
         // Clone locals so we can move them into the paint callback:
         let slice_position = self.slice_position;
 
-        // TODO: Implement slice index update here like this:
-        // self.angle += response.drag_delta().x * 0.01;
-
-        // Clone locals so we can move them into the paint callback:
-        // let angle = self.angle;
+        let fullscreen_factor = Self::fullscreen_factor(rect, self.scale);
 
         // The callback function for WGPU is in two stages: prepare, and paint.
         //
@@ -365,7 +340,7 @@ impl SliceRenderer {
         let cb = egui_wgpu::CallbackFn::new()
             .prepare(move |device, queue, _encoder, paint_callback_resources| {
                 let resources: &SliceRenderResources = paint_callback_resources.get().unwrap();
-                resources.prepare(device, queue, slice_position);
+                resources.prepare(device, queue, slice_position, fullscreen_factor);
                 Vec::new()
             })
             .paint(move |_info, render_pass, paint_callback_resources| {
@@ -403,7 +378,7 @@ impl Vertex {
                 wgpu::VertexAttribute {
                     offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                     shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x2, // NEW!
+                    format: wgpu::VertexFormat::Float32x2,
                 },
             ],
         }
