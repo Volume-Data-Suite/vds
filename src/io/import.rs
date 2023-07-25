@@ -106,6 +106,8 @@ impl Importer {
         let mut visible = self.visible;
         egui::Window::new("Import raw 3D volume data")
             .open(&mut visible)
+            .resizable(false)
+            .collapsible(false)
             .enabled(!self.loading)
             .show(ctx, |ui| {
                 ui.label("Review and add missing metadata to continue:");
