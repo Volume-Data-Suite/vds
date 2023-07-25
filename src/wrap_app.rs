@@ -236,7 +236,6 @@ impl WrapApp {
 
     fn ui_file_drag_and_drop(&mut self, ctx: &egui::Context) {
         use egui::*;
-        use std::fmt::Write as _;
 
         if ctx.input(|i| i.key_pressed(Key::Escape)) {
             self.state.importer.show_drag_and_drop = false;
@@ -250,6 +249,7 @@ impl WrapApp {
 
             #[cfg(not(target_arch = "wasm32"))]
             let text = ctx.input(|i| {
+                use std::fmt::Write as _;
                 let mut text = "Dropping file:\n".to_owned();
                 for file in &i.raw.hovered_files {
                     if let Some(path) = &file.path {
