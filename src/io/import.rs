@@ -46,6 +46,11 @@ impl Importer {
                 self.item.path = rfd::FileDialog::new().pick_file();
             }
 
+            // abort import when FileDialog was cloaed with "Cancel" instead of "Open"
+            if self.item.path.is_none() {
+                return;
+            }
+
             if let Some(path) = self.item.path.as_ref() {
                 self.item.file_size = Some(path.metadata().unwrap().len());
             }
