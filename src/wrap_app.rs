@@ -245,11 +245,12 @@ impl WrapApp {
         // Preview hovering files:
         if !ctx.input(|i| i.raw.hovered_files.is_empty()) || self.state.importer.show_drag_and_drop
         {
+            #[cfg(target_arch = "wasm32")]
+            let text = "Simply drag and drop your file here to import.\n              Press the escape key to abort.".to_owned();
+
+            #[cfg(not(target_arch = "wasm32"))]
             let text = ctx.input(|i| {
-                #[cfg(not(target_arch = "wasm32"))]
                 let mut text = "Dropping file:\n".to_owned();
-                #[cfg(target_arch = "wasm32")]
-                let mut text = "Simply drag and drop your file here to import.\n".to_owned();
                 for file in &i.raw.hovered_files {
                     if let Some(path) = &file.path {
                         write!(text, "\n{}", path.display()).ok();
