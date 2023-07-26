@@ -24,6 +24,7 @@ struct SliceRenderResources {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     uniform_buffer_slice_position: wgpu::Buffer,
+    uniform_buffer_volume_axis: wgpu::Buffer,
     uniform_buffer_fullscreen_factor: wgpu::Buffer,
     texture_bind_group: wgpu::BindGroup,
     fullscreen_factor_bind_group: wgpu::BindGroup,
@@ -36,19 +37,25 @@ impl SliceRenderResources {
         _device: &wgpu::Device,
         queue: &wgpu::Queue,
         slice_position: f32,
-        fullscreen_factor_uniform: Vector3,
+        axis: i32,
+        fullscreen_factor: Vector3,
     ) {
         queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(INDICES));
         queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(VERTICES));
         queue.write_buffer(
             &self.uniform_buffer_fullscreen_factor,
             0,
-            bytemuck::cast_slice(&[fullscreen_factor_uniform]),
+            bytemuck::cast_slice(&[fullscreen_factor]),
         );
         queue.write_buffer(
             &self.uniform_buffer_slice_position,
             0,
             bytemuck::cast_slice(&[slice_position]),
+        );
+        queue.write_buffer(
+            &self.uniform_buffer_volume_axis,
+            0,
+            bytemuck::cast_slice(&[axis]),
         );
     }
 
@@ -68,10 +75,19 @@ impl SliceRenderResources {
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
+enum VolumeAxis {
+    X,
+    Y,
+    Z,
+}
+
 pub struct SliceRenderer {
-    // size: Rect,
-    slice_position: f32,
+    slice_position: u32,
     scale: egui::Rect,
+    axis: VolumeAxis,
+    dimensions: (u32, u32, u32),
+    spacing: (f32, f32, f32),
 }
 
 impl SliceRenderer {
@@ -94,6 +110,8 @@ impl SliceRenderer {
     pub fn new(
         wgpu_render_state: &egui_wgpu::RenderState,
         texture: &crate::apps::Texture,
+        dimensions: (u32, u32, u32),
+        spacing: (f32, f32, f32),
     ) -> Option<Self> {
         // Get the WGPU render state from the eframe creation context. This can also be retrieved
         // from `eframe::Frame` when you don't have a `CreationContext` available.
@@ -174,7 +192,8 @@ impl SliceRenderer {
             label: Some("fullscreen_factor_bind_group"),
         });
 
-        let slice_position: f32 = 0.5;
+        let slice_position: u32 = dimensions.0 / 2;
+        let axis: i32 = 0;
 
         let uniform_buffer_slice_position =
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -185,28 +204,55 @@ impl SliceRenderer {
                 usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
             });
 
+        let uniform_buffer_volume_axis =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Volume Axis"),
+                contents: bytemuck::cast_slice(&[axis]),
+                // Mapping at creation (as done by the create_buffer_init utility) doesn't require us to to add the MAP_WRITE usage
+                // (this *happens* to workaround this bug )
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
+            });
+
         let bind_group_layout_slice_position =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("Slice position"),
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                }],
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
             });
 
         let bind_group_slice_position = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Slice position"),
             layout: &bind_group_layout_slice_position,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: uniform_buffer_slice_position.as_entire_binding(),
-            }],
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform_buffer_slice_position.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: uniform_buffer_volume_axis.as_entire_binding(),
+                },
+            ],
         });
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -283,6 +329,7 @@ impl SliceRenderer {
                 vertex_buffer,
                 index_buffer,
                 uniform_buffer_slice_position,
+                uniform_buffer_volume_axis,
                 uniform_buffer_fullscreen_factor,
                 texture_bind_group,
                 fullscreen_factor_bind_group,
@@ -290,9 +337,11 @@ impl SliceRenderer {
             });
 
         Some(Self {
-            // size: Rect::EVERYTHING,
             slice_position,
             scale: egui::Rect::from_two_pos(egui::pos2(-1.0, -1.0), egui::pos2(1.0, 1.0)),
+            axis: VolumeAxis::X,
+            dimensions,
+            spacing,
         })
     }
 }
@@ -304,7 +353,7 @@ impl eframe::App for SliceRenderer {
                 .auto_shrink([false; 2])
                 .show(ui, |ui| {
                     egui::Frame::canvas(ui.style()).show(ui, |ui| {
-                        self.custom_painting(ui);
+                        self.custom_painting(ctx, ui);
                     });
                 });
         });
@@ -312,15 +361,21 @@ impl eframe::App for SliceRenderer {
 }
 
 impl SliceRenderer {
-    fn custom_painting(&mut self, ui: &mut egui::Ui) {
-        // TODO: Deal with resize and aspect ratio
+    fn custom_painting(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let availbale_size = ui.available_size_before_wrap();
-        let (rect, response) = ui.allocate_exact_size(availbale_size, egui::Sense::drag());
-
-        self.slice_position += response.drag_delta().y * 0.01;
+        let (rect, _response) = ui.allocate_exact_size(availbale_size, egui::Sense::hover());
 
         // Clone locals so we can move them into the paint callback:
-        let slice_position = self.slice_position;
+        let axis = match self.axis {
+            VolumeAxis::X => 0,
+            VolumeAxis::Y => 1,
+            VolumeAxis::Z => 2,
+        };
+        let slice_position: f32 = match self.axis {
+            VolumeAxis::X => self.slice_position as f32 / self.dimensions.0 as f32,
+            VolumeAxis::Y => self.slice_position as f32 / self.dimensions.1 as f32,
+            VolumeAxis::Z => self.slice_position as f32 / self.dimensions.2 as f32,
+        };
 
         let fullscreen_factor = Self::fullscreen_factor(rect, self.scale);
 
@@ -340,7 +395,7 @@ impl SliceRenderer {
         let cb = egui_wgpu::CallbackFn::new()
             .prepare(move |device, queue, _encoder, paint_callback_resources| {
                 let resources: &SliceRenderResources = paint_callback_resources.get().unwrap();
-                resources.prepare(device, queue, slice_position, fullscreen_factor);
+                resources.prepare(device, queue, slice_position, axis, fullscreen_factor);
                 Vec::new()
             })
             .paint(move |_info, render_pass, paint_callback_resources| {
@@ -354,6 +409,66 @@ impl SliceRenderer {
         };
 
         ui.painter().add(callback);
+
+        // Paint overlay
+        egui::Area::new("Slice Renderer Overlay")
+            .anchor(egui::Align2::LEFT_TOP, [12.0, 12.0])
+            .show(ctx, |ui| {
+                match self.axis {
+                    VolumeAxis::X => ui.add(
+                        egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.0)
+                            .text("Slice Position"),
+                    ),
+                    VolumeAxis::Y => ui.add(
+                        egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.1)
+                            .text("Slice Position"),
+                    ),
+                    VolumeAxis::Z => ui.add(
+                        egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.2)
+                            .text("Slice Position"),
+                    ),
+                };
+
+                if ui
+                    .add(egui::RadioButton::new(self.axis == VolumeAxis::X, "X-Axis"))
+                    .clicked()
+                {
+                    self.axis = VolumeAxis::X;
+                    self.slice_position = self.dimensions.0 / 2;
+                    let height = self.dimensions.1 as f32 * self.spacing.1;
+                    let width = self.dimensions.2 as f32 * self.spacing.2;
+                    self.scale = egui::Rect::from_two_pos(
+                        egui::Pos2::new(-width, -height),
+                        egui::Pos2::new(width, height),
+                    );
+                }
+                if ui
+                    .add(egui::RadioButton::new(self.axis == VolumeAxis::Y, "Y-Axis"))
+                    .clicked()
+                {
+                    self.axis = VolumeAxis::Y;
+                    self.slice_position = self.dimensions.1 / 2;
+                    let height = self.dimensions.0 as f32 * self.spacing.0;
+                    let width = self.dimensions.2 as f32 * self.spacing.2;
+                    self.scale = egui::Rect::from_two_pos(
+                        egui::Pos2::new(-width, -height),
+                        egui::Pos2::new(width, height),
+                    );
+                }
+                if ui
+                    .add(egui::RadioButton::new(self.axis == VolumeAxis::Z, "Z-Axis"))
+                    .clicked()
+                {
+                    self.axis = VolumeAxis::Z;
+                    self.slice_position = self.dimensions.2 / 2;
+                    let height = self.dimensions.0 as f32 * self.spacing.0;
+                    let width = self.dimensions.1 as f32 * self.spacing.1;
+                    self.scale = egui::Rect::from_two_pos(
+                        egui::Pos2::new(-width, -height),
+                        egui::Pos2::new(width, height),
+                    );
+                }
+            });
     }
 }
 

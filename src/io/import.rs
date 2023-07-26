@@ -100,6 +100,8 @@ impl Importer {
             let spacing2: f32 = captures.get(2).unwrap().as_str().parse().unwrap();
             let spacing3: f32 = captures.get(3).unwrap().as_str().parse().unwrap();
             self.item.spacing = Some((spacing1, spacing2, spacing3));
+        } else {
+            self.item.spacing = Some((1.0, 1.0, 1.0));
         }
     }
     fn show_metadata_dialog_raw3d(&mut self, ctx: &egui::Context) {

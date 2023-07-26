@@ -34,6 +34,8 @@ impl WrapApp {
         slf.slice_renderer = crate::apps::SliceRenderer::new(
             _cc.wgpu_render_state.as_ref().unwrap(),
             &slf.volume_texture,
+            (1, 1, 1),
+            (1.0, 1.0, 1.0),
         );
 
         #[cfg(feature = "persistence")]
@@ -53,12 +55,17 @@ impl WrapApp {
 
         let bytes = self.state.importer.item.data.as_mut().unwrap();
         let dimensions = self.state.importer.item.dimensions.unwrap();
-        let label = Some("Volume Texture");
+        let spacing = self.state.importer.item.spacing.unwrap();
+        let label: Option<&str> = Some("Volume Texture");
 
         self.volume_texture =
             crate::apps::Texture::from_u16_bytes(device, queue, bytes, &dimensions, label).unwrap();
-        self.slice_renderer =
-            crate::apps::SliceRenderer::new(wgpu_render_state, &self.volume_texture);
+        self.slice_renderer = crate::apps::SliceRenderer::new(
+            wgpu_render_state,
+            &self.volume_texture,
+            dimensions,
+            spacing,
+        );
         self.state.importer = crate::io::Importer::default();
     }
 }

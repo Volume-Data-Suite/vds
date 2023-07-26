@@ -31,10 +31,26 @@ var t_diffuse: texture_3d<f32>;
 var s_diffuse: sampler;
 @group(2) @binding(0)
 var<uniform> slice_position: f32;
+@group(2) @binding(1)
+var<uniform> axis: i32; // 0 = x, 1 = y, 2 = z
+
+fn get_value(position: vec2<f32>) -> vec3<f32> {
+    var value: vec3<f32>;
+    if (axis == 0) {
+        value = vec3<f32>(position.x, position.y, slice_position);
+    }
+    else if (axis == 1) {
+        value = vec3<f32>(position.x, slice_position, position.y);
+    }
+    else if (axis == 2) {
+        value = vec3<f32>(slice_position, position.x, position.y);
+    }
+    return value;
+}
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let position = in.tex_coords;
-    let value = textureSample(t_diffuse, s_diffuse, vec3<f32>(position.x, position.y, slice_position));
-    return vec4<f32>(value[0], value[0], value[0], 1.0);
+    let value = textureSample(t_diffuse, s_diffuse, get_value(position))[0];
+    return vec4<f32>(value, value, value, 1.0);
 }
