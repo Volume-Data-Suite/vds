@@ -86,6 +86,8 @@ impl Importer {
         if let Some(captures) = bits_regex.captures(filename) {
             let bits: u8 = captures.get(1).unwrap().as_str().parse().unwrap();
             self.item.bits = Some(bits);
+        } else {
+            self.item.bits = Some(16);
         }
 
         if let Some(captures) = dimensions_regex.captures(filename) {
@@ -93,6 +95,8 @@ impl Importer {
             let dim2: u32 = captures.get(2).unwrap().as_str().parse().unwrap();
             let dim3: u32 = captures.get(3).unwrap().as_str().parse().unwrap();
             self.item.dimensions = Some((dim1, dim2, dim3));
+        } else {
+            self.item.dimensions = Some((1, 1, 1));
         }
 
         if let Some(captures) = spacing_regex.captures(filename) {
@@ -106,6 +110,44 @@ impl Importer {
     }
     fn show_metadata_dialog_raw3d(&mut self, ctx: &egui::Context) {
         let mut visible = self.visible;
+
+        // create temporary variables for getting UI inputs and set default values
+        let mut bits: u32 = if self.item.bits.is_some() {
+            self.item.bits.unwrap() as u32
+        } else {
+            16
+        };
+        let mut dimension_x: u32 = if self.item.dimensions.is_some() {
+            self.item.dimensions.unwrap().0
+        } else {
+            1
+        };
+        let mut dimension_y: u32 = if self.item.dimensions.is_some() {
+            self.item.dimensions.unwrap().1
+        } else {
+            1
+        };
+        let mut dimension_z: u32 = if self.item.dimensions.is_some() {
+            self.item.dimensions.unwrap().2
+        } else {
+            1
+        };
+        let mut spacing_x: f32 = if self.item.dimensions.is_some() {
+            self.item.spacing.unwrap().0
+        } else {
+            1.0
+        };
+        let mut spacing_y: f32 = if self.item.dimensions.is_some() {
+            self.item.spacing.unwrap().1
+        } else {
+            1.0
+        };
+        let mut spacing_z: f32 = if self.item.dimensions.is_some() {
+            self.item.spacing.unwrap().2
+        } else {
+            1.0
+        };
+
         egui::Window::new("Import raw 3D volume data")
             .open(&mut visible)
             .resizable(false)
@@ -121,7 +163,7 @@ impl Importer {
                     });
                     ui.horizontal(|ui| {
                         ui.label("Bits per Voxel:");
-                        ui.add(egui::DragValue::new(&mut self.item.bits.unwrap_or(16)));
+                        ui.add(egui::DragValue::new(&mut bits));
                     });
                     ui.horizontal(|ui| {
                         ui.label("Endianness:");
@@ -129,27 +171,15 @@ impl Importer {
                     });
                     ui.horizontal(|ui| {
                         ui.label("Dimensions in Pixel (x,y,z):");
-                        ui.add(egui::DragValue::new(
-                            &mut self.item.dimensions.unwrap_or((0, 0, 0)).0,
-                        ));
-                        ui.add(egui::DragValue::new(
-                            &mut self.item.dimensions.unwrap_or((0, 0, 0)).1,
-                        ));
-                        ui.add(egui::DragValue::new(
-                            &mut self.item.dimensions.unwrap_or((0, 0, 0)).2,
-                        ));
+                        ui.add(egui::DragValue::new(&mut dimension_x));
+                        ui.add(egui::DragValue::new(&mut dimension_y));
+                        ui.add(egui::DragValue::new(&mut dimension_z));
                     });
                     ui.horizontal(|ui| {
                         ui.label("Spacing in mm (x,y,z):");
-                        ui.add(egui::DragValue::new(
-                            &mut self.item.spacing.unwrap_or((1.0, 1.0, 1.0)).0,
-                        ));
-                        ui.add(egui::DragValue::new(
-                            &mut self.item.spacing.unwrap_or((1.0, 1.0, 1.0)).1,
-                        ));
-                        ui.add(egui::DragValue::new(
-                            &mut self.item.spacing.unwrap_or((1.0, 1.0, 1.0)).2,
-                        ));
+                        ui.add(egui::DragValue::new(&mut spacing_x));
+                        ui.add(egui::DragValue::new(&mut spacing_y));
+                        ui.add(egui::DragValue::new(&mut spacing_z));
                     });
                 });
 
@@ -178,5 +208,8 @@ impl Importer {
                 });
             });
         self.visible &= visible;
+        self.item.bits = Some(bits as u8);
+        self.item.dimensions = Some((dimension_x, dimension_y, dimension_z));
+        self.item.spacing = Some((spacing_x, spacing_y, spacing_z));
     }
 }
