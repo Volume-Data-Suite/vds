@@ -461,6 +461,7 @@ impl SliceRenderer {
             .id(self.id)
             .fixed_pos(overlay_position)
             .enabled(true)
+            .default_open(false)
             .resizable(false)
             .show(ui.painter().ctx(), |ui| {
                 match self.axis {
