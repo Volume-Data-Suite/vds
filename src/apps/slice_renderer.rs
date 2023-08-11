@@ -361,41 +361,21 @@ impl SliceRenderer {
             bind_group_slice_position,
         };
 
-        if wgpu_render_state
+        match wgpu_render_state
             .renderer
-            .read()
+            .write()
             .paint_callback_resources
-            .contains::<std::collections::HashMap<egui::Id, SliceRenderResources>>()
+            .entry::<std::collections::HashMap<egui::Id, SliceRenderResources>>()
         {
-            match wgpu_render_state
-                .renderer
-                .write()
-                .paint_callback_resources
-                .entry::<std::collections::HashMap<egui::Id, SliceRenderResources>>()
-            {
-                type_map::concurrent::Entry::Occupied(mut e) => {
-                    // The typemap already contains a value of this type, so you can access or modify it here
-                    e.get_mut().insert(id, slice_renderer_resources);
-                }
-                type_map::concurrent::Entry::Vacant(e) => {
-                    // The typemap does not contain a value of this type, so you can insert one here
-                    e.insert(std::collections::HashMap::new())
-                        .insert(id, slice_renderer_resources);
-                }
+            type_map::concurrent::Entry::Occupied(mut e) => {
+                // The typemap already contains a value of this type, so you can access or modify it here
+                e.get_mut().insert(id, slice_renderer_resources);
             }
-        } else {
-            let mut callback_resources: std::collections::HashMap<egui::Id, SliceRenderResources> =
-                std::collections::HashMap::new();
-            callback_resources.insert(id, slice_renderer_resources);
-
-            // Because the graphics pipeline must have the same lifetime as the egui render pass,
-            // instead of storing the pipeline in our `Custom3D` struct, we insert it into the
-            // `paint_callback_resources` type map, which is stored alongside the render pass.
-            wgpu_render_state
-                .renderer
-                .write()
-                .paint_callback_resources
-                .insert(callback_resources);
+            type_map::concurrent::Entry::Vacant(e) => {
+                // The typemap does not contain a value of this type, so you can insert one here
+                e.insert(std::collections::HashMap::new())
+                    .insert(id, slice_renderer_resources);
+            }
         }
 
         Some(Self {
