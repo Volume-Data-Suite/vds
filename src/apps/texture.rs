@@ -5,12 +5,15 @@ pub struct Texture {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
     pub sampler: wgpu::Sampler,
+    pub dimensions: (u32, u32, u32),
+    pub spacing: (f32, f32, f32),
 }
 
 impl Texture {
     pub fn default<'a>(cc: &'a eframe::CreationContext<'a>) -> Result<Self> {
         let file_name = "init_volume";
         let dimensions: (u32, u32, u32) = (1, 1, 1);
+        let spacing: (f32, f32, f32) = (1.0, 1.0, 1.0);
         let mut volume_data_bytes: Vec<u8> =
             vec![127; (dimensions.0 * dimensions.1 * dimensions.2 * 2) as usize];
 
@@ -22,7 +25,8 @@ impl Texture {
             device,
             queue,
             &mut volume_data_bytes,
-            &dimensions,
+            dimensions,
+            spacing,
             Some(file_name),
         )
     }
@@ -30,7 +34,8 @@ impl Texture {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         bytes: &mut Vec<u8>,
-        dimensions: &(u32, u32, u32),
+        dimensions: (u32, u32, u32),
+        spacing: (f32, f32, f32),
         label: Option<&str>,
     ) -> Result<Self> {
         for i in 0..(bytes.len() / 2) {
@@ -40,14 +45,15 @@ impl Texture {
             bytes[i * 2] = bytes_f16[0];
             bytes[i * 2 + 1] = bytes_f16[1];
         }
-        Self::from_f16_bytes(device, queue, bytes, dimensions, label)
+        Self::from_f16_bytes(device, queue, bytes, dimensions, spacing, label)
     }
 
     pub fn from_f16_bytes(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         bytes: &[u8],
-        dimensions: &(u32, u32, u32),
+        dimensions: (u32, u32, u32),
+        spacing: (f32, f32, f32),
         label: Option<&str>,
     ) -> Result<Self> {
         let size = wgpu::Extent3d {
@@ -101,6 +107,8 @@ impl Texture {
             texture,
             view,
             sampler,
+            dimensions,
+            spacing,
         })
     }
 }

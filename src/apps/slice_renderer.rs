@@ -4,6 +4,7 @@ use eframe::{
     egui_wgpu::wgpu::util::DeviceExt,
     egui_wgpu::{self, wgpu},
 };
+use egui::Pos2;
 
 // We need this for Rust to store our data correctly for the shaders
 #[repr(C)]
@@ -76,13 +77,25 @@ impl SliceRenderResources {
 }
 
 #[derive(Clone, Copy, PartialEq)]
-enum VolumeAxis {
+pub enum VolumeAxis {
     X,
     Y,
     Z,
 }
 
+impl From<VolumeAxis> for i32 {
+    fn from(v: VolumeAxis) -> i32 {
+        match v {
+            x if x == VolumeAxis::X => 0,
+            x if x == VolumeAxis::X => 1,
+            x if x == VolumeAxis::X => 2,
+            _ => -1,
+        }
+    }
+}
+
 pub struct SliceRenderer {
+    id: egui::Id,
     slice_position: u32,
     scale: egui::Rect,
     axis: VolumeAxis,
@@ -106,12 +119,29 @@ impl SliceRenderer {
 
         Vector3::new(scale_x, scale_y, 1.0)
     }
-
-    pub fn new(
+    pub fn axial(
         wgpu_render_state: &egui_wgpu::RenderState,
         texture: &crate::apps::Texture,
-        dimensions: (u32, u32, u32),
-        spacing: (f32, f32, f32),
+    ) -> Option<Self> {
+        Self::new(wgpu_render_state, texture, VolumeAxis::X)
+    }
+    pub fn saggital(
+        wgpu_render_state: &egui_wgpu::RenderState,
+        texture: &crate::apps::Texture,
+    ) -> Option<Self> {
+        Self::new(wgpu_render_state, texture, VolumeAxis::Y)
+    }
+    pub fn coronal(
+        wgpu_render_state: &egui_wgpu::RenderState,
+        texture: &crate::apps::Texture,
+    ) -> Option<Self> {
+        Self::new(wgpu_render_state, texture, VolumeAxis::Z)
+    }
+
+    fn new(
+        wgpu_render_state: &egui_wgpu::RenderState,
+        texture: &crate::apps::Texture,
+        axis: VolumeAxis,
     ) -> Option<Self> {
         // Get the WGPU render state from the eframe creation context. This can also be retrieved
         // from `eframe::Frame` when you don't have a `CreationContext` available.
@@ -192,8 +222,7 @@ impl SliceRenderer {
             label: Some("fullscreen_factor_bind_group"),
         });
 
-        let slice_position: u32 = dimensions.0 / 2;
-        let axis: i32 = 0;
+        let slice_position: u32 = texture.dimensions.0 / 2;
 
         let uniform_buffer_slice_position =
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -204,10 +233,12 @@ impl SliceRenderer {
                 usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
             });
 
+        let axis_for_shader: i32 = axis.into();
+
         let uniform_buffer_volume_axis =
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Volume Axis"),
-                contents: bytemuck::cast_slice(&[axis]),
+                contents: bytemuck::cast_slice(&[axis_for_shader]),
                 // Mapping at creation (as done by the create_buffer_init utility) doesn't require us to to add the MAP_WRITE usage
                 // (this *happens* to workaround this bug )
                 usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
@@ -296,13 +327,13 @@ impl SliceRenderer {
                 // Requires Features::CONSERVATIVE_RASTERIZATION
                 conservative: false,
             },
-            depth_stencil: None, // 1.
+            depth_stencil: None,
             multisample: wgpu::MultisampleState {
-                count: 1,                         // 2.
-                mask: !0,                         // 3.
-                alpha_to_coverage_enabled: false, // 4.
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
             },
-            multiview: None, // 5.
+            multiview: None,
         });
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -317,51 +348,70 @@ impl SliceRenderer {
             usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
         });
 
-        // Because the graphics pipeline must have the same lifetime as the egui render pass,
-        // instead of storing the pipeline in our `Custom3D` struct, we insert it into the
-        // `paint_callback_resources` type map, which is stored alongside the render pass.
-        wgpu_render_state
+        let id = egui::Id::new(uuid::Uuid::new_v4());
+        let slice_renderer_resources = SliceRenderResources {
+            render_pipeline,
+            vertex_buffer,
+            index_buffer,
+            uniform_buffer_slice_position,
+            uniform_buffer_volume_axis,
+            uniform_buffer_fullscreen_factor,
+            texture_bind_group,
+            fullscreen_factor_bind_group,
+            bind_group_slice_position,
+        };
+
+        if wgpu_render_state
             .renderer
-            .write()
+            .read()
             .paint_callback_resources
-            .insert(SliceRenderResources {
-                render_pipeline,
-                vertex_buffer,
-                index_buffer,
-                uniform_buffer_slice_position,
-                uniform_buffer_volume_axis,
-                uniform_buffer_fullscreen_factor,
-                texture_bind_group,
-                fullscreen_factor_bind_group,
-                bind_group_slice_position,
-            });
+            .contains::<std::collections::HashMap<egui::Id, SliceRenderResources>>()
+        {
+            match wgpu_render_state
+                .renderer
+                .write()
+                .paint_callback_resources
+                .entry::<std::collections::HashMap<egui::Id, SliceRenderResources>>()
+            {
+                type_map::concurrent::Entry::Occupied(mut e) => {
+                    // The typemap already contains a value of this type, so you can access or modify it here
+                    e.get_mut().insert(id, slice_renderer_resources);
+                }
+                type_map::concurrent::Entry::Vacant(e) => {
+                    // The typemap does not contain a value of this type, so you can insert one here
+                    e.insert(std::collections::HashMap::new())
+                        .insert(id, slice_renderer_resources);
+                }
+            }
+        } else {
+            let mut callback_resources: std::collections::HashMap<egui::Id, SliceRenderResources> =
+                std::collections::HashMap::new();
+            callback_resources.insert(id, slice_renderer_resources);
+
+            // Because the graphics pipeline must have the same lifetime as the egui render pass,
+            // instead of storing the pipeline in our `Custom3D` struct, we insert it into the
+            // `paint_callback_resources` type map, which is stored alongside the render pass.
+            wgpu_render_state
+                .renderer
+                .write()
+                .paint_callback_resources
+                .insert(callback_resources);
+        }
 
         Some(Self {
+            id,
             slice_position,
             scale: egui::Rect::from_two_pos(egui::pos2(-1.0, -1.0), egui::pos2(1.0, 1.0)),
-            axis: VolumeAxis::X,
-            dimensions,
-            spacing,
+            axis,
+            dimensions: texture.dimensions,
+            spacing: texture.spacing,
         })
     }
 }
 
-impl eframe::App for SliceRenderer {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            egui::ScrollArea::both()
-                .auto_shrink([false; 2])
-                .show(ui, |ui| {
-                    egui::Frame::canvas(ui.style()).show(ui, |ui| {
-                        self.custom_painting(ctx, ui);
-                    });
-                });
-        });
-    }
-}
-
 impl SliceRenderer {
-    fn custom_painting(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    // pub fn custom_painting(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn custom_painting(&mut self, ui: &mut egui::Ui) {
         let availbale_size = ui.available_size_before_wrap();
         let (rect, _response) = ui.allocate_exact_size(availbale_size, egui::Sense::hover());
 
@@ -379,6 +429,8 @@ impl SliceRenderer {
 
         let fullscreen_factor = Self::fullscreen_factor(rect, self.scale);
 
+        let id = self.id;
+
         // The callback function for WGPU is in two stages: prepare, and paint.
         //
         // The prepare callback is called every frame before paint and is given access to the wgpu
@@ -394,13 +446,23 @@ impl SliceRenderer {
         // can be used to issue draw commands.
         let cb = egui_wgpu::CallbackFn::new()
             .prepare(move |device, queue, _encoder, paint_callback_resources| {
-                let resources: &SliceRenderResources = paint_callback_resources.get().unwrap();
-                resources.prepare(device, queue, slice_position, axis, fullscreen_factor);
+                let resources: &std::collections::HashMap<egui::Id, SliceRenderResources> =
+                    paint_callback_resources.get().unwrap();
+                let slice_render_resources = resources.get(&id).unwrap();
+                slice_render_resources.prepare(
+                    device,
+                    queue,
+                    slice_position,
+                    axis,
+                    fullscreen_factor,
+                );
                 Vec::new()
             })
             .paint(move |_info, render_pass, paint_callback_resources| {
-                let resources: &SliceRenderResources = paint_callback_resources.get().unwrap();
-                resources.paint(render_pass);
+                let resources: &std::collections::HashMap<egui::Id, SliceRenderResources> =
+                    paint_callback_resources.get().unwrap();
+                let slice_render_resources = resources.get(&id).unwrap();
+                slice_render_resources.paint(render_pass);
             });
 
         let callback = egui::PaintCallback {
@@ -411,9 +473,16 @@ impl SliceRenderer {
         ui.painter().add(callback);
 
         // Paint overlay
-        egui::Area::new("Slice Renderer Overlay")
-            .anchor(egui::Align2::LEFT_TOP, [12.0, 12.0])
-            .show(ctx, |ui| {
+        let overlay_position = Pos2 {
+            x: rect.left_top().x + 2.0,
+            y: rect.left_top().y + 2.0,
+        };
+        egui::Window::new("Settings:")
+            .id(self.id)
+            .fixed_pos(overlay_position)
+            .enabled(true)
+            .resizable(false)
+            .show(ui.painter().ctx(), |ui| {
                 match self.axis {
                     VolumeAxis::X => ui.add(
                         egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.0)
