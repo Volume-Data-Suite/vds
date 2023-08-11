@@ -1,8 +1,179 @@
 #[cfg(target_arch = "wasm32")]
 use core::any::Any;
+use egui::Margin;
+use egui_dock::{DockArea, NodeIndex, Style, Tree};
 use std::str::FromStr;
 
-use crate::io::VolumeDataFileType;
+use crate::{apps::SliceRenderer, io::VolumeDataFileType};
+
+// Docking GUI
+
+trait TabUi {
+    fn ui(&mut self, ui: &mut egui::Ui);
+    fn title(&self) -> String;
+}
+struct SliceViewAxial {
+    slice_renderer: Option<SliceRenderer>,
+}
+impl SliceViewAxial {
+    fn new(
+        wgpu_render_state: &eframe::egui_wgpu::RenderState,
+        volume_texture: &crate::apps::Texture,
+    ) -> Self {
+        let slice_renderer = crate::apps::SliceRenderer::axial(wgpu_render_state, volume_texture);
+
+        Self { slice_renderer }
+    }
+}
+impl TabUi for SliceViewAxial {
+    fn ui(&mut self, ui: &mut egui::Ui) {
+        let renderer = self.slice_renderer.as_mut().unwrap();
+        renderer.custom_painting(ui);
+    }
+    fn title(&self) -> String {
+        "Axial".to_owned()
+    }
+}
+struct SliceViewCoronal {
+    slice_renderer: Option<SliceRenderer>,
+}
+impl SliceViewCoronal {
+    fn new(
+        wgpu_render_state: &eframe::egui_wgpu::RenderState,
+        volume_texture: &crate::apps::Texture,
+    ) -> Self {
+        let slice_renderer = crate::apps::SliceRenderer::coronal(wgpu_render_state, volume_texture);
+
+        Self { slice_renderer }
+    }
+}
+impl TabUi for SliceViewCoronal {
+    fn ui(&mut self, ui: &mut egui::Ui) {
+        let renderer = self.slice_renderer.as_mut().unwrap();
+        renderer.custom_painting(ui);
+    }
+    fn title(&self) -> String {
+        "Coronal".to_owned()
+    }
+}
+struct SliceViewSaggital {
+    slice_renderer: Option<SliceRenderer>,
+}
+impl SliceViewSaggital {
+    fn new(
+        wgpu_render_state: &eframe::egui_wgpu::RenderState,
+        volume_texture: &crate::apps::Texture,
+    ) -> Self {
+        let slice_renderer =
+            crate::apps::SliceRenderer::saggital(wgpu_render_state, volume_texture);
+
+        Self { slice_renderer }
+    }
+}
+impl TabUi for SliceViewSaggital {
+    fn ui(&mut self, ui: &mut egui::Ui) {
+        let renderer = self.slice_renderer.as_mut().unwrap();
+        renderer.custom_painting(ui);
+    }
+    fn title(&self) -> String {
+        "Saggital".to_owned()
+    }
+}
+
+struct Tab {
+    node: NodeIndex,
+    content: Box<dyn TabUi>,
+}
+impl Tab {
+    fn slice_view_axial(
+        node_index: usize,
+        wgpu_render_state: &eframe::egui_wgpu::RenderState,
+        volume_texture: &crate::apps::Texture,
+    ) -> Self {
+        Self {
+            node: NodeIndex(node_index),
+            content: Box::new(SliceViewAxial::new(wgpu_render_state, volume_texture)),
+        }
+    }
+
+    fn slice_view_coronal(
+        node_index: usize,
+        wgpu_render_state: &eframe::egui_wgpu::RenderState,
+        volume_texture: &crate::apps::Texture,
+    ) -> Self {
+        Self {
+            node: NodeIndex(node_index),
+            content: Box::new(SliceViewCoronal::new(wgpu_render_state, volume_texture)),
+        }
+    }
+
+    fn slice_view_saggital(
+        node_index: usize,
+        wgpu_render_state: &eframe::egui_wgpu::RenderState,
+        volume_texture: &crate::apps::Texture,
+    ) -> Self {
+        Self {
+            node: NodeIndex(node_index),
+            content: Box::new(SliceViewSaggital::new(wgpu_render_state, volume_texture)),
+        }
+    }
+
+    fn title(&self) -> String {
+        let title = self.content.title();
+        format!("{title} {}", self.node.0)
+    }
+
+    fn content(&mut self, ui: &mut egui::Ui) {
+        self.content.ui(ui);
+    }
+}
+
+struct TabViewer<'a> {
+    added_nodes: &'a mut Vec<Tab>,
+    wgpu_render_state: &'a eframe::egui_wgpu::RenderState,
+    volume_texture: &'a crate::apps::Texture,
+}
+
+impl egui_dock::TabViewer for TabViewer<'_> {
+    type Tab = Tab;
+
+    fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
+        tab.content(ui);
+    }
+
+    fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
+        tab.title().into()
+    }
+
+    fn add_popup(&mut self, ui: &mut egui::Ui, node: NodeIndex) {
+        ui.set_min_width(120.0);
+        ui.style_mut().visuals.button_frame = false;
+
+        if ui.button("Axial").clicked() {
+            self.added_nodes.push(Tab::slice_view_axial(
+                node.0,
+                self.wgpu_render_state,
+                self.volume_texture,
+            ));
+        }
+
+        if ui.button("Coronal").clicked() {
+            self.added_nodes.push(Tab::slice_view_coronal(
+                node.0,
+                self.wgpu_render_state,
+                self.volume_texture,
+            ));
+        }
+
+        if ui.button("Saggital").clicked() {
+            self.added_nodes.push(Tab::slice_view_saggital(
+                node.0,
+                self.wgpu_render_state,
+                self.volume_texture,
+            ));
+        }
+    }
+}
 
 /// The state that we persist (serialize).
 #[derive(Default)]
@@ -17,35 +188,67 @@ pub struct State {
 /// Wraps many rendering apps into one for grid views and shared memory.
 pub struct WrapApp {
     state: State,
+    tree: Tree<Tab>,
+    counter: usize,
 
     volume_texture: crate::apps::Texture,
-    slice_renderer: Option<crate::apps::SliceRenderer>,
 }
 
 impl WrapApp {
-    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        let volume_texture = crate::apps::Texture::default(cc).unwrap();
+        let wgpu_render_state = cc.wgpu_render_state.as_ref().unwrap();
+        let tree = Self::default_dock(wgpu_render_state, &volume_texture);
+
         #[allow(unused_mut)]
         let mut slf = Self {
             state: State::default(),
-            volume_texture: crate::apps::Texture::default(_cc).unwrap(),
-            slice_renderer: None,
+            tree,
+            counter: 4,
+            volume_texture,
         };
 
-        slf.slice_renderer = crate::apps::SliceRenderer::new(
-            _cc.wgpu_render_state.as_ref().unwrap(),
-            &slf.volume_texture,
-            (1, 1, 1),
-            (1.0, 1.0, 1.0),
-        );
-
         #[cfg(feature = "persistence")]
-        if let Some(storage) = _cc.storage {
+        if let Some(storage) = cc.storage {
             if let Some(state) = eframe::get_value(storage, eframe::APP_KEY) {
                 slf.state = state;
             }
         }
 
         slf
+    }
+
+    fn default_dock(
+        wgpu_render_state: &eframe::egui_wgpu::RenderState,
+        volume_texture: &crate::apps::Texture,
+    ) -> Tree<Tab> {
+        let mut tree = Tree::new(vec![Tab::slice_view_axial(
+            1,
+            wgpu_render_state,
+            volume_texture,
+        )]);
+
+        // Modify the tree before constructing the dock
+        let [a, _b] = tree.split_left(
+            NodeIndex::root(),
+            0.3,
+            vec![Tab::slice_view_coronal(
+                2,
+                wgpu_render_state,
+                volume_texture,
+            )],
+        );
+        let [_, _] = tree.split_below(
+            a,
+            0.7,
+            vec![Tab::slice_view_saggital(
+                3,
+                wgpu_render_state,
+                volume_texture,
+            )],
+        );
+
+        tree
     }
 
     pub fn update_volume_texture(&mut self, frame: &mut eframe::Frame) {
@@ -59,13 +262,11 @@ impl WrapApp {
         let label: Option<&str> = Some("Volume Texture");
 
         self.volume_texture =
-            crate::apps::Texture::from_u16_bytes(device, queue, bytes, &dimensions, label).unwrap();
-        self.slice_renderer = crate::apps::SliceRenderer::new(
-            wgpu_render_state,
-            &self.volume_texture,
-            dimensions,
-            spacing,
-        );
+            crate::apps::Texture::from_u16_bytes(device, queue, bytes, dimensions, spacing, label)
+                .unwrap();
+
+        self.tree = Self::default_dock(wgpu_render_state, &self.volume_texture);
+
         self.state.importer = crate::io::Importer::default();
     }
 }
@@ -85,7 +286,6 @@ impl eframe::App for WrapApp {
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::F11)) {
             frame.set_fullscreen(!frame.info().window_info.fullscreen);
         }
-
         egui::TopBottomPanel::top("wrap_app_top_bar").show(ctx, |ui| {
             egui::trace!(ui);
             ui.horizontal_wrapped(|ui| {
@@ -98,7 +298,7 @@ impl eframe::App for WrapApp {
 
         self.backend_panel(ctx, frame);
 
-        self.show_renderer(ctx, frame);
+        self.show_dock(ctx, frame);
 
         if self.state.importer.new_data_available {
             self.update_volume_texture(frame);
@@ -164,13 +364,36 @@ impl WrapApp {
         });
     }
 
-    fn show_renderer(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let renderer = self
-            .slice_renderer
-            .as_mut()
-            .map(|app| app as &mut dyn eframe::App)
-            .unwrap();
-        renderer.update(ctx, frame);
+    fn show_dock(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        let mut added_nodes = Vec::new();
+        let wgpu_render_state = eframe::Frame::wgpu_render_state(frame).unwrap();
+        let volume_texture = &self.volume_texture;
+
+        let mut style = Style::from_egui(ctx.style().as_ref());
+        style.tabs.inner_margin = Margin::same(0.0);
+        // style.tabs.bg_fill = Color32::BLACK;
+
+        DockArea::new(&mut self.tree)
+            .show_add_buttons(true)
+            .show_add_popup(true)
+            .style(style)
+            .show(
+                ctx,
+                &mut TabViewer {
+                    added_nodes: &mut added_nodes,
+                    wgpu_render_state,
+                    volume_texture,
+                },
+            );
+
+        added_nodes.drain(..).for_each(|node| {
+            self.tree.set_focused_node(node.node);
+            self.tree.push_to_focused_leaf(Tab {
+                node: NodeIndex(self.counter),
+                content: node.content,
+            });
+            self.counter += 1;
+        });
     }
 
     fn show_importer(&mut self, ctx: &egui::Context) {
