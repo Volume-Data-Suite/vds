@@ -101,6 +101,7 @@ pub struct SliceRenderer {
     axis: VolumeAxis,
     dimensions: (u32, u32, u32),
     spacing: (f32, f32, f32),
+    pub show_settings_oberlay: bool,
 }
 
 impl SliceRenderer {
@@ -385,6 +386,7 @@ impl SliceRenderer {
             axis,
             dimensions: texture.dimensions,
             spacing: texture.spacing,
+            show_settings_oberlay: true,
         })
     }
 }
@@ -453,72 +455,73 @@ impl SliceRenderer {
         ui.painter().add(callback);
 
         // Paint overlay
-        let overlay_position = Pos2 {
-            x: rect.left_top().x + 2.0,
-            y: rect.left_top().y + 2.0,
-        };
-        egui::Window::new("Settings:")
-            .id(self.id)
-            .fixed_pos(overlay_position)
-            .enabled(true)
-            .default_open(false)
-            .resizable(false)
-            .show(ui.painter().ctx(), |ui| {
-                match self.axis {
-                    VolumeAxis::X => ui.add(
-                        egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.0)
-                            .text("Slice Position"),
-                    ),
-                    VolumeAxis::Y => ui.add(
-                        egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.1)
-                            .text("Slice Position"),
-                    ),
-                    VolumeAxis::Z => ui.add(
-                        egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.2)
-                            .text("Slice Position"),
-                    ),
-                };
+        if self.show_settings_oberlay {
+            let overlay_position = Pos2 {
+                x: rect.left_top().x + 2.0,
+                y: rect.left_top().y + 2.0,
+            };
+            egui::Window::new("Settings:")
+                .id(self.id)
+                .fixed_pos(overlay_position)
+                .default_open(false)
+                .resizable(false)
+                .show(ui.painter().ctx(), |ui| {
+                    match self.axis {
+                        VolumeAxis::X => ui.add(
+                            egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.0)
+                                .text("Slice Position"),
+                        ),
+                        VolumeAxis::Y => ui.add(
+                            egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.1)
+                                .text("Slice Position"),
+                        ),
+                        VolumeAxis::Z => ui.add(
+                            egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.2)
+                                .text("Slice Position"),
+                        ),
+                    };
 
-                if ui
-                    .add(egui::RadioButton::new(self.axis == VolumeAxis::X, "X-Axis"))
-                    .clicked()
-                {
-                    self.axis = VolumeAxis::X;
-                    self.slice_position = self.dimensions.0 / 2;
-                    let height = self.dimensions.1 as f32 * self.spacing.1;
-                    let width = self.dimensions.2 as f32 * self.spacing.2;
-                    self.scale = egui::Rect::from_two_pos(
-                        egui::Pos2::new(-width, -height),
-                        egui::Pos2::new(width, height),
-                    );
-                }
-                if ui
-                    .add(egui::RadioButton::new(self.axis == VolumeAxis::Y, "Y-Axis"))
-                    .clicked()
-                {
-                    self.axis = VolumeAxis::Y;
-                    self.slice_position = self.dimensions.1 / 2;
-                    let height = self.dimensions.0 as f32 * self.spacing.0;
-                    let width = self.dimensions.2 as f32 * self.spacing.2;
-                    self.scale = egui::Rect::from_two_pos(
-                        egui::Pos2::new(-width, -height),
-                        egui::Pos2::new(width, height),
-                    );
-                }
-                if ui
-                    .add(egui::RadioButton::new(self.axis == VolumeAxis::Z, "Z-Axis"))
-                    .clicked()
-                {
-                    self.axis = VolumeAxis::Z;
-                    self.slice_position = self.dimensions.2 / 2;
-                    let height = self.dimensions.0 as f32 * self.spacing.0;
-                    let width = self.dimensions.1 as f32 * self.spacing.1;
-                    self.scale = egui::Rect::from_two_pos(
-                        egui::Pos2::new(-width, -height),
-                        egui::Pos2::new(width, height),
-                    );
-                }
-            });
+                    if ui
+                        .add(egui::RadioButton::new(self.axis == VolumeAxis::X, "X-Axis"))
+                        .clicked()
+                    {
+                        self.axis = VolumeAxis::X;
+                        self.slice_position = self.dimensions.0 / 2;
+                        let height = self.dimensions.1 as f32 * self.spacing.1;
+                        let width = self.dimensions.2 as f32 * self.spacing.2;
+                        self.scale = egui::Rect::from_two_pos(
+                            egui::Pos2::new(-width, -height),
+                            egui::Pos2::new(width, height),
+                        );
+                    }
+                    if ui
+                        .add(egui::RadioButton::new(self.axis == VolumeAxis::Y, "Y-Axis"))
+                        .clicked()
+                    {
+                        self.axis = VolumeAxis::Y;
+                        self.slice_position = self.dimensions.1 / 2;
+                        let height = self.dimensions.0 as f32 * self.spacing.0;
+                        let width = self.dimensions.2 as f32 * self.spacing.2;
+                        self.scale = egui::Rect::from_two_pos(
+                            egui::Pos2::new(-width, -height),
+                            egui::Pos2::new(width, height),
+                        );
+                    }
+                    if ui
+                        .add(egui::RadioButton::new(self.axis == VolumeAxis::Z, "Z-Axis"))
+                        .clicked()
+                    {
+                        self.axis = VolumeAxis::Z;
+                        self.slice_position = self.dimensions.2 / 2;
+                        let height = self.dimensions.0 as f32 * self.spacing.0;
+                        let width = self.dimensions.1 as f32 * self.spacing.1;
+                        self.scale = egui::Rect::from_two_pos(
+                            egui::Pos2::new(-width, -height),
+                            egui::Pos2::new(width, height),
+                        );
+                    }
+                });
+        }
     }
 }
 

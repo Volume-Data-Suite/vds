@@ -1,3 +1,4 @@
+use cgmath::ElementWise;
 #[cfg(target_arch = "wasm32")]
 use core::any::Any;
 use egui::Margin;
@@ -11,6 +12,7 @@ use crate::{apps::SliceRenderer, io::VolumeDataFileType};
 trait TabUi {
     fn ui(&mut self, ui: &mut egui::Ui);
     fn title(&self) -> String;
+    fn show_settings_oberlay(&mut self, _show: bool) {}
 }
 struct SliceViewAxial {
     slice_renderer: Option<SliceRenderer>,
@@ -32,6 +34,9 @@ impl TabUi for SliceViewAxial {
     }
     fn title(&self) -> String {
         "Axial".to_owned()
+    }
+    fn show_settings_oberlay(&mut self, show: bool) {
+        self.slice_renderer.as_mut().unwrap().show_settings_oberlay = show;
     }
 }
 struct SliceViewCoronal {
@@ -55,6 +60,9 @@ impl TabUi for SliceViewCoronal {
     fn title(&self) -> String {
         "Coronal".to_owned()
     }
+    fn show_settings_oberlay(&mut self, show: bool) {
+        self.slice_renderer.as_mut().unwrap().show_settings_oberlay = show;
+    }
 }
 struct SliceViewSaggital {
     slice_renderer: Option<SliceRenderer>,
@@ -77,6 +85,9 @@ impl TabUi for SliceViewSaggital {
     }
     fn title(&self) -> String {
         "Saggital".to_owned()
+    }
+    fn show_settings_oberlay(&mut self, show: bool) {
+        self.slice_renderer.as_mut().unwrap().show_settings_oberlay = show;
     }
 }
 
@@ -183,6 +194,7 @@ pub struct State {
     backend_panel: super::backend_panel::BackendPanel,
     #[cfg_attr(feature = "serde", serde(skip))]
     importer: super::io::Importer,
+    hide_settings_oberlay: bool,
 }
 
 /// Wraps many rendering apps into one for grid views and shared memory.
@@ -306,9 +318,9 @@ impl eframe::App for WrapApp {
 
         self.show_importer(ctx);
 
-        self.state.backend_panel.end_of_frame(ctx);
-
         self.ui_file_drag_and_drop(ctx);
+
+        self.state.backend_panel.end_of_frame(ctx);
 
         // On web, the browser controls `pixels_per_point`.
         if !frame.is_web() {
@@ -445,6 +457,30 @@ impl WrapApp {
         });
     }
 
+    fn view_menus(&mut self, ui: &mut egui::Ui) {
+        ui.menu_button("View", |ui| {
+            let hide_settings_oberlay = if self.state.hide_settings_oberlay {
+                "Show Settings Overlays"
+            } else {
+                "Hide Settings Overlays"
+            };
+            if ui.button(hide_settings_oberlay).clicked() {
+                self.state.hide_settings_oberlay = !self.state.hide_settings_oberlay;
+
+                for node in self.tree.iter_mut() {
+                    if let egui_dock::Node::Leaf { tabs, .. } = node {
+                        for tab in tabs {
+                            tab.content
+                                .show_settings_oberlay(!self.state.hide_settings_oberlay);
+                        }
+                    }
+                }
+
+                ui.close_menu();
+            }
+        });
+    }
+
     fn menu_bar_contents(&mut self, ui: &mut egui::Ui) {
         egui::widgets::global_dark_light_mode_switch(ui);
 
@@ -456,6 +492,8 @@ impl WrapApp {
 
         ui.horizontal(|ui| {
             self.file_menus(ui);
+            ui.separator();
+            self.view_menus(ui);
         });
         ui.separator();
 
