@@ -78,17 +78,17 @@ impl SliceRenderResources {
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum VolumeAxis {
-    X,
-    Y,
-    Z,
+    Axial,
+    Coronal,
+    Sagittal,
 }
 
 impl From<VolumeAxis> for i32 {
     fn from(v: VolumeAxis) -> i32 {
         match v {
-            x if x == VolumeAxis::X => 0,
-            x if x == VolumeAxis::X => 1,
-            x if x == VolumeAxis::X => 2,
+            x if x == VolumeAxis::Axial => 0,
+            x if x == VolumeAxis::Axial => 1,
+            x if x == VolumeAxis::Axial => 2,
             _ => -1,
         }
     }
@@ -124,19 +124,19 @@ impl SliceRenderer {
         wgpu_render_state: &egui_wgpu::RenderState,
         texture: &crate::apps::Texture,
     ) -> Option<Self> {
-        Self::new(wgpu_render_state, texture, VolumeAxis::X)
+        Self::new(wgpu_render_state, texture, VolumeAxis::Axial)
     }
     pub fn saggital(
         wgpu_render_state: &egui_wgpu::RenderState,
         texture: &crate::apps::Texture,
     ) -> Option<Self> {
-        Self::new(wgpu_render_state, texture, VolumeAxis::Y)
+        Self::new(wgpu_render_state, texture, VolumeAxis::Coronal)
     }
     pub fn coronal(
         wgpu_render_state: &egui_wgpu::RenderState,
         texture: &crate::apps::Texture,
     ) -> Option<Self> {
-        Self::new(wgpu_render_state, texture, VolumeAxis::Z)
+        Self::new(wgpu_render_state, texture, VolumeAxis::Sagittal)
     }
 
     fn new(
@@ -223,7 +223,11 @@ impl SliceRenderer {
             label: Some("fullscreen_factor_bind_group"),
         });
 
-        let slice_position: u32 = texture.dimensions.0 / 2;
+        let slice_position: u32 = match axis {
+            VolumeAxis::Axial => texture.dimensions.0 / 2,
+            VolumeAxis::Coronal => texture.dimensions.1 / 2,
+            VolumeAxis::Sagittal => texture.dimensions.2 / 2,
+        };
 
         let uniform_buffer_slice_position =
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -379,10 +383,25 @@ impl SliceRenderer {
             }
         }
 
+        let height = match axis {
+            VolumeAxis::Axial => texture.dimensions.0 as f32 * texture.spacing.0,
+            VolumeAxis::Coronal => texture.dimensions.2 as f32 * texture.spacing.2,
+            VolumeAxis::Sagittal => texture.dimensions.2 as f32 * texture.spacing.2,
+        };
+        let width = match axis {
+            VolumeAxis::Axial => texture.dimensions.1 as f32 * texture.spacing.1,
+            VolumeAxis::Coronal => texture.dimensions.1 as f32 * texture.spacing.1,
+            VolumeAxis::Sagittal => texture.dimensions.0 as f32 * texture.spacing.0,
+        };
+        let scale = egui::Rect::from_two_pos(
+            egui::Pos2::new(-width, -height),
+            egui::Pos2::new(width, height),
+        );
+
         Some(Self {
             id,
             slice_position,
-            scale: egui::Rect::from_two_pos(egui::pos2(-1.0, -1.0), egui::pos2(1.0, 1.0)),
+            scale,
             axis,
             dimensions: texture.dimensions,
             spacing: texture.spacing,
@@ -399,14 +418,14 @@ impl SliceRenderer {
 
         // Clone locals so we can move them into the paint callback:
         let axis = match self.axis {
-            VolumeAxis::X => 0,
-            VolumeAxis::Y => 1,
-            VolumeAxis::Z => 2,
+            VolumeAxis::Axial => 0,
+            VolumeAxis::Coronal => 1,
+            VolumeAxis::Sagittal => 2,
         };
         let slice_position: f32 = match self.axis {
-            VolumeAxis::X => self.slice_position as f32 / self.dimensions.0 as f32,
-            VolumeAxis::Y => self.slice_position as f32 / self.dimensions.1 as f32,
-            VolumeAxis::Z => self.slice_position as f32 / self.dimensions.2 as f32,
+            VolumeAxis::Axial => self.slice_position as f32 / self.dimensions.0 as f32,
+            VolumeAxis::Coronal => self.slice_position as f32 / self.dimensions.1 as f32,
+            VolumeAxis::Sagittal => self.slice_position as f32 / self.dimensions.2 as f32,
         };
 
         let fullscreen_factor = Self::fullscreen_factor(rect, self.scale);
@@ -467,59 +486,59 @@ impl SliceRenderer {
                 .resizable(false)
                 .show(ui.painter().ctx(), |ui| {
                     match self.axis {
-                        VolumeAxis::X => ui.add(
+                        VolumeAxis::Axial => ui.add(
                             egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.0)
                                 .text("Slice Position"),
                         ),
-                        VolumeAxis::Y => ui.add(
+                        VolumeAxis::Coronal => ui.add(
                             egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.1)
                                 .text("Slice Position"),
                         ),
-                        VolumeAxis::Z => ui.add(
+                        VolumeAxis::Sagittal => ui.add(
                             egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.2)
                                 .text("Slice Position"),
                         ),
                     };
 
-                    if ui
-                        .add(egui::RadioButton::new(self.axis == VolumeAxis::X, "X-Axis"))
-                        .clicked()
-                    {
-                        self.axis = VolumeAxis::X;
-                        self.slice_position = self.dimensions.0 / 2;
-                        let height = self.dimensions.1 as f32 * self.spacing.1;
-                        let width = self.dimensions.2 as f32 * self.spacing.2;
-                        self.scale = egui::Rect::from_two_pos(
-                            egui::Pos2::new(-width, -height),
-                            egui::Pos2::new(width, height),
-                        );
-                    }
-                    if ui
-                        .add(egui::RadioButton::new(self.axis == VolumeAxis::Y, "Y-Axis"))
-                        .clicked()
-                    {
-                        self.axis = VolumeAxis::Y;
-                        self.slice_position = self.dimensions.1 / 2;
-                        let height = self.dimensions.0 as f32 * self.spacing.0;
-                        let width = self.dimensions.2 as f32 * self.spacing.2;
-                        self.scale = egui::Rect::from_two_pos(
-                            egui::Pos2::new(-width, -height),
-                            egui::Pos2::new(width, height),
-                        );
-                    }
-                    if ui
-                        .add(egui::RadioButton::new(self.axis == VolumeAxis::Z, "Z-Axis"))
-                        .clicked()
-                    {
-                        self.axis = VolumeAxis::Z;
-                        self.slice_position = self.dimensions.2 / 2;
-                        let height = self.dimensions.0 as f32 * self.spacing.0;
-                        let width = self.dimensions.1 as f32 * self.spacing.1;
-                        self.scale = egui::Rect::from_two_pos(
-                            egui::Pos2::new(-width, -height),
-                            egui::Pos2::new(width, height),
-                        );
-                    }
+                    // if ui
+                    //     .add(egui::RadioButton::new(self.axis == VolumeAxis::X, "X-Axis"))
+                    //     .clicked()
+                    // {
+                    //     self.axis = VolumeAxis::X;
+                    //     self.slice_position = self.dimensions.0 / 2;
+                    //     let height = self.dimensions.1 as f32 * self.spacing.1;
+                    //     let width = self.dimensions.2 as f32 * self.spacing.2;
+                    //     self.scale = egui::Rect::from_two_pos(
+                    //         egui::Pos2::new(-width, -height),
+                    //         egui::Pos2::new(width, height),
+                    //     );
+                    // }
+                    // if ui
+                    //     .add(egui::RadioButton::new(self.axis == VolumeAxis::Y, "Y-Axis"))
+                    //     .clicked()
+                    // {
+                    //     self.axis = VolumeAxis::Y;
+                    //     self.slice_position = self.dimensions.1 / 2;
+                    //     let height = self.dimensions.0 as f32 * self.spacing.0;
+                    //     let width = self.dimensions.2 as f32 * self.spacing.2;
+                    //     self.scale = egui::Rect::from_two_pos(
+                    //         egui::Pos2::new(-width, -height),
+                    //         egui::Pos2::new(width, height),
+                    //     );
+                    // }
+                    // if ui
+                    //     .add(egui::RadioButton::new(self.axis == VolumeAxis::Z, "Z-Axis"))
+                    //     .clicked()
+                    // {
+                    //     self.axis = VolumeAxis::Z;
+                    //     self.slice_position = self.dimensions.2 / 2;
+                    //     let height = self.dimensions.0 as f32 * self.spacing.0;
+                    //     let width = self.dimensions.1 as f32 * self.spacing.1;
+                    //     self.scale = egui::Rect::from_two_pos(
+                    //         egui::Pos2::new(-width, -height),
+                    //         egui::Pos2::new(width, height),
+                    //     );
+                    // }
                 });
         }
     }
