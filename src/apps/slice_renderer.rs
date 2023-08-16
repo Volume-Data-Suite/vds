@@ -100,7 +100,6 @@ pub struct SliceRenderer {
     scale: egui::Rect,
     axis: VolumeAxis,
     dimensions: (u32, u32, u32),
-    spacing: (f32, f32, f32),
     pub show_settings_oberlay: bool,
 }
 
@@ -404,7 +403,6 @@ impl SliceRenderer {
             scale,
             axis,
             dimensions: texture.dimensions,
-            spacing: texture.spacing,
             show_settings_oberlay: true,
         })
     }
