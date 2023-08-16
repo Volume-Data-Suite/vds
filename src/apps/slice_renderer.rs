@@ -499,46 +499,6 @@ impl SliceRenderer {
                                 .text("Slice Position"),
                         ),
                     };
-
-                    // if ui
-                    //     .add(egui::RadioButton::new(self.axis == VolumeAxis::X, "X-Axis"))
-                    //     .clicked()
-                    // {
-                    //     self.axis = VolumeAxis::X;
-                    //     self.slice_position = self.dimensions.0 / 2;
-                    //     let height = self.dimensions.1 as f32 * self.spacing.1;
-                    //     let width = self.dimensions.2 as f32 * self.spacing.2;
-                    //     self.scale = egui::Rect::from_two_pos(
-                    //         egui::Pos2::new(-width, -height),
-                    //         egui::Pos2::new(width, height),
-                    //     );
-                    // }
-                    // if ui
-                    //     .add(egui::RadioButton::new(self.axis == VolumeAxis::Y, "Y-Axis"))
-                    //     .clicked()
-                    // {
-                    //     self.axis = VolumeAxis::Y;
-                    //     self.slice_position = self.dimensions.1 / 2;
-                    //     let height = self.dimensions.0 as f32 * self.spacing.0;
-                    //     let width = self.dimensions.2 as f32 * self.spacing.2;
-                    //     self.scale = egui::Rect::from_two_pos(
-                    //         egui::Pos2::new(-width, -height),
-                    //         egui::Pos2::new(width, height),
-                    //     );
-                    // }
-                    // if ui
-                    //     .add(egui::RadioButton::new(self.axis == VolumeAxis::Z, "Z-Axis"))
-                    //     .clicked()
-                    // {
-                    //     self.axis = VolumeAxis::Z;
-                    //     self.slice_position = self.dimensions.2 / 2;
-                    //     let height = self.dimensions.0 as f32 * self.spacing.0;
-                    //     let width = self.dimensions.1 as f32 * self.spacing.1;
-                    //     self.scale = egui::Rect::from_two_pos(
-                    //         egui::Pos2::new(-width, -height),
-                    //         egui::Pos2::new(width, height),
-                    //     );
-                    // }
                 });
         }
     }
