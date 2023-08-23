@@ -203,7 +203,7 @@ pub struct State {
 pub struct WrapApp {
     state: State,
     tree: Tree<Tab>,
-    counter: usize,
+    node_counter: usize,
 
     volume_texture: crate::apps::Texture,
 }
@@ -218,7 +218,7 @@ impl WrapApp {
         let mut slf = Self {
             state: State::default(),
             tree,
-            counter: 4,
+            node_counter: 4,
             volume_texture,
         };
 
@@ -237,26 +237,26 @@ impl WrapApp {
         volume_texture: &crate::apps::Texture,
     ) -> Tree<Tab> {
         let mut tree = Tree::new(vec![Tab::slice_view_axial(
-            1,
+            0,
             wgpu_render_state,
             volume_texture,
         )]);
 
         // Modify the tree before constructing the dock
-        let [a, _b] = tree.split_left(
+        let [a, _b] = tree.split_right(
             NodeIndex::root(),
-            0.3,
+            0.5,
             vec![Tab::slice_view_coronal(
-                2,
+                1,
                 wgpu_render_state,
                 volume_texture,
             )],
         );
         let [_, _] = tree.split_below(
             a,
-            0.7,
+            0.5,
             vec![Tab::slice_view_saggital(
-                3,
+                2,
                 wgpu_render_state,
                 volume_texture,
             )],
@@ -403,10 +403,10 @@ impl WrapApp {
         added_nodes.drain(..).for_each(|node| {
             self.tree.set_focused_node(node.node);
             self.tree.push_to_focused_leaf(Tab {
-                node: NodeIndex(self.counter),
+                node: NodeIndex(self.node_counter),
                 content: node.content,
             });
-            self.counter += 1;
+            self.node_counter += 1;
         });
     }
 
