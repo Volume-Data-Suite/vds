@@ -4,7 +4,7 @@ use eframe::{
     egui_wgpu::wgpu::util::DeviceExt,
     egui_wgpu::{self, wgpu},
 };
-use egui::Pos2;
+use egui::{epaint::Shadow, Pos2};
 
 // We need this for Rust to store our data correctly for the shaders
 #[repr(C)]
@@ -473,12 +473,19 @@ impl SliceRenderer {
 
         // Paint overlay
         if self.show_settings_oberlay {
+            let original_visuals = ui.visuals().clone();
+            let mut visuals = ui.visuals().clone();
+            visuals.window_shadow = Shadow::NONE;
+            // TODO: Implement overlay transparency
+            // visuals.window_fill = visuals.window_fill().gamma_multiply(0.5);
+            ui.ctx().set_visuals(visuals);
+
             let overlay_position = Pos2 {
                 x: rect.left_top().x + 2.0,
                 y: rect.left_top().y + 2.0,
             };
             egui::Window::new("Settings:")
-                .id(self.id)
+                .id(ui.next_auto_id())
                 .fixed_pos(overlay_position)
                 .default_open(false)
                 .resizable(false)
@@ -498,6 +505,8 @@ impl SliceRenderer {
                         ),
                     };
                 });
+
+            ui.ctx().set_visuals(original_visuals);
         }
     }
 }
