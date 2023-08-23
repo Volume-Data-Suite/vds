@@ -1,6 +1,6 @@
 #[cfg(target_arch = "wasm32")]
 use core::any::Any;
-use egui::Margin;
+use egui::{Id, Margin};
 use egui_dock::{DockArea, NodeIndex, Style, Tree};
 use std::str::FromStr;
 
@@ -129,8 +129,7 @@ impl Tab {
     }
 
     fn title(&self) -> String {
-        let title = self.content.title();
-        format!("{title} {}", self.node.0)
+        self.content.title()
     }
 
     fn content(&mut self, ui: &mut egui::Ui) {
@@ -153,6 +152,10 @@ impl egui_dock::TabViewer for TabViewer<'_> {
 
     fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
         tab.title().into()
+    }
+
+    fn id(&mut self, tab: &mut Self::Tab) -> Id {
+        Id::new(tab.node)
     }
 
     fn add_popup(&mut self, ui: &mut egui::Ui, node: NodeIndex) {
