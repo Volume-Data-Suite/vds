@@ -1,3 +1,4 @@
+use egui::Align2;
 use regex::Regex;
 use std::path::PathBuf;
 
@@ -153,6 +154,8 @@ impl Importer {
             .resizable(false)
             .collapsible(false)
             .enabled(!self.loading)
+            .anchor(Align2::CENTER_CENTER, egui::Vec2::default())
+            .movable(false)
             .show(ctx, |ui| {
                 ui.label("Review and add missing metadata to continue:");
 
