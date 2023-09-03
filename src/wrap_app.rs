@@ -4,7 +4,10 @@ use egui::{Id, Margin};
 use egui_dock::{DockArea, NodeIndex, Style, Tree};
 use std::str::FromStr;
 
-use crate::{apps::SliceRenderer, io::VolumeDataFileType};
+use crate::{
+    apps::{RayMarchingRenderer, SliceRenderer},
+    io::VolumeDataFileType,
+};
 
 // Docking GUI
 
@@ -12,6 +15,31 @@ trait TabUi {
     fn ui(&mut self, ui: &mut egui::Ui);
     fn title(&self) -> String;
     fn show_settings_oberlay(&mut self, _show: bool) {}
+}
+struct RayMarchingFirstHit {
+    renderer: Option<RayMarchingRenderer>,
+}
+impl RayMarchingFirstHit {
+    fn new(
+        wgpu_render_state: &eframe::egui_wgpu::RenderState,
+        volume_texture: &crate::apps::Texture,
+    ) -> Self {
+        let renderer = crate::apps::RayMarchingRenderer::new(wgpu_render_state, volume_texture);
+
+        Self { renderer }
+    }
+}
+impl TabUi for RayMarchingFirstHit {
+    fn ui(&mut self, ui: &mut egui::Ui) {
+        let renderer = self.renderer.as_mut().unwrap();
+        renderer.custom_painting(ui);
+    }
+    fn title(&self) -> String {
+        "First Hit".to_owned()
+    }
+    fn show_settings_oberlay(&mut self, show: bool) {
+        self.renderer.as_mut().unwrap().show_settings_oberlay = show;
+    }
 }
 struct SliceViewAxial {
     slice_renderer: Option<SliceRenderer>,
@@ -95,6 +123,17 @@ struct Tab {
     content: Box<dyn TabUi>,
 }
 impl Tab {
+    fn ray_marching_first_hit(
+        node_index: usize,
+        wgpu_render_state: &eframe::egui_wgpu::RenderState,
+        volume_texture: &crate::apps::Texture,
+    ) -> Self {
+        Self {
+            node: NodeIndex(node_index),
+            content: Box::new(RayMarchingFirstHit::new(wgpu_render_state, volume_texture)),
+        }
+    }
+
     fn slice_view_axial(
         node_index: usize,
         wgpu_render_state: &eframe::egui_wgpu::RenderState,
@@ -185,6 +224,14 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                 self.volume_texture,
             ));
         }
+
+        if ui.button("First Hit").clicked() {
+            self.added_nodes.push(Tab::ray_marching_first_hit(
+                node.0,
+                self.wgpu_render_state,
+                self.volume_texture,
+            ));
+        }
     }
 }
 
@@ -243,7 +290,7 @@ impl WrapApp {
         )]);
 
         // Modify the tree before constructing the dock
-        let [a, _b] = tree.split_right(
+        let [a, b] = tree.split_right(
             NodeIndex::root(),
             0.5,
             vec![Tab::slice_view_coronal(
@@ -257,6 +304,15 @@ impl WrapApp {
             0.5,
             vec![Tab::slice_view_saggital(
                 2,
+                wgpu_render_state,
+                volume_texture,
+            )],
+        );
+        let [_, _] = tree.split_below(
+            b,
+            0.5,
+            vec![Tab::ray_marching_first_hit(
+                3,
                 wgpu_render_state,
                 volume_texture,
             )],

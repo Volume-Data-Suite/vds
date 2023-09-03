@@ -99,7 +99,7 @@ pub struct SliceRenderer {
     slice_position: u32,
     scale: egui::Rect,
     axis: VolumeAxis,
-    dimensions: (u32, u32, u32),
+    dimensions: glam::UVec3,
     pub show_settings_oberlay: bool,
 }
 
@@ -223,9 +223,9 @@ impl SliceRenderer {
         });
 
         let slice_position: u32 = match axis {
-            VolumeAxis::Axial => texture.dimensions.0 / 2,
-            VolumeAxis::Coronal => texture.dimensions.1 / 2,
-            VolumeAxis::Sagittal => texture.dimensions.2 / 2,
+            VolumeAxis::Axial => texture.dimensions.x / 2,
+            VolumeAxis::Coronal => texture.dimensions.y / 2,
+            VolumeAxis::Sagittal => texture.dimensions.z / 2,
         };
 
         let uniform_buffer_slice_position =
@@ -292,7 +292,7 @@ impl SliceRenderer {
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("slice_renderer_shader.wgsl").into()),
         });
 
         let render_pipeline_layout =
@@ -383,14 +383,14 @@ impl SliceRenderer {
         }
 
         let height = match axis {
-            VolumeAxis::Axial => texture.dimensions.0 as f32 * texture.spacing.0,
-            VolumeAxis::Coronal => texture.dimensions.2 as f32 * texture.spacing.2,
-            VolumeAxis::Sagittal => texture.dimensions.2 as f32 * texture.spacing.2,
+            VolumeAxis::Axial => texture.dimensions.x as f32 * texture.spacing.x,
+            VolumeAxis::Coronal => texture.dimensions.z as f32 * texture.spacing.z,
+            VolumeAxis::Sagittal => texture.dimensions.z as f32 * texture.spacing.z,
         };
         let width = match axis {
-            VolumeAxis::Axial => texture.dimensions.1 as f32 * texture.spacing.1,
-            VolumeAxis::Coronal => texture.dimensions.1 as f32 * texture.spacing.1,
-            VolumeAxis::Sagittal => texture.dimensions.0 as f32 * texture.spacing.0,
+            VolumeAxis::Axial => texture.dimensions.y as f32 * texture.spacing.y,
+            VolumeAxis::Coronal => texture.dimensions.y as f32 * texture.spacing.y,
+            VolumeAxis::Sagittal => texture.dimensions.x as f32 * texture.spacing.x,
         };
         let scale = egui::Rect::from_two_pos(
             egui::Pos2::new(-width, -height),
@@ -421,9 +421,9 @@ impl SliceRenderer {
             VolumeAxis::Sagittal => 2,
         };
         let slice_position: f32 = match self.axis {
-            VolumeAxis::Axial => self.slice_position as f32 / self.dimensions.0 as f32,
-            VolumeAxis::Coronal => self.slice_position as f32 / self.dimensions.1 as f32,
-            VolumeAxis::Sagittal => self.slice_position as f32 / self.dimensions.2 as f32,
+            VolumeAxis::Axial => self.slice_position as f32 / self.dimensions.x as f32,
+            VolumeAxis::Coronal => self.slice_position as f32 / self.dimensions.y as f32,
+            VolumeAxis::Sagittal => self.slice_position as f32 / self.dimensions.z as f32,
         };
 
         let fullscreen_factor = Self::fullscreen_factor(rect, self.scale);
@@ -492,15 +492,15 @@ impl SliceRenderer {
                 .show(ui.painter().ctx(), |ui| {
                     match self.axis {
                         VolumeAxis::Axial => ui.add(
-                            egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.0)
+                            egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.x)
                                 .text("Slice Position"),
                         ),
                         VolumeAxis::Coronal => ui.add(
-                            egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.1)
+                            egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.y)
                                 .text("Slice Position"),
                         ),
                         VolumeAxis::Sagittal => ui.add(
-                            egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.2)
+                            egui::Slider::new(&mut self.slice_position, 1..=self.dimensions.z)
                                 .text("Slice Position"),
                         ),
                     };

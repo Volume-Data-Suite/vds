@@ -5,17 +5,18 @@ pub struct Texture {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
     pub sampler: wgpu::Sampler,
-    pub dimensions: (u32, u32, u32),
-    pub spacing: (f32, f32, f32),
+    pub dimensions: glam::UVec3,
+    pub spacing: glam::Vec3,
+    pub extent: glam::Vec3,
 }
 
 impl Texture {
     pub fn default<'a>(cc: &'a eframe::CreationContext<'a>) -> Result<Self> {
         let file_name = "init_volume";
-        let dimensions: (u32, u32, u32) = (1, 1, 1);
-        let spacing: (f32, f32, f32) = (1.0, 1.0, 1.0);
+        let dimensions = glam::UVec3::new(1, 1, 1);
+        let spacing = glam::Vec3::new(1.0, 1.0, 1.0);
         let mut volume_data_bytes: Vec<u8> =
-            vec![127; (dimensions.0 * dimensions.1 * dimensions.2 * 2) as usize];
+            vec![127; (dimensions.x * dimensions.y * dimensions.z * 2) as usize];
 
         let wgpu_render_state = cc.wgpu_render_state.as_ref().unwrap();
         let device = &wgpu_render_state.device;
@@ -34,8 +35,8 @@ impl Texture {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         bytes: &mut Vec<u8>,
-        dimensions: (u32, u32, u32),
-        spacing: (f32, f32, f32),
+        dimensions: glam::UVec3,
+        spacing: glam::Vec3,
         label: Option<&str>,
     ) -> Result<Self> {
         for i in 0..(bytes.len() / 2) {
@@ -52,14 +53,14 @@ impl Texture {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         bytes: &[u8],
-        dimensions: (u32, u32, u32),
-        spacing: (f32, f32, f32),
+        dimensions: glam::UVec3,
+        spacing: glam::Vec3,
         label: Option<&str>,
     ) -> Result<Self> {
         let size = wgpu::Extent3d {
-            width: dimensions.0,
-            height: dimensions.1,
-            depth_or_array_layers: dimensions.2,
+            width: dimensions.x,
+            height: dimensions.y,
+            depth_or_array_layers: dimensions.z,
         };
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label,
@@ -86,8 +87,8 @@ impl Texture {
                 // needs to ba a multiple of 256 according to https://sotrh.github.io/learn-wgpu/beginner/tutorial5-textures/#getting-data-into-a-texture
                 // bytes_per_row: std::num::NonZeroU32::new(2 * dimensions.0),
                 // rows_per_image: std::num::NonZeroU32::new(dimensions.1),
-                bytes_per_row: Some(2 * dimensions.0),
-                rows_per_image: Some(dimensions.1),
+                bytes_per_row: Some(2 * dimensions.x),
+                rows_per_image: Some(dimensions.y),
             },
             size,
         );
@@ -98,10 +99,16 @@ impl Texture {
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Linear,
             mipmap_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
         });
+
+        let extent = glam::Vec3 {
+            x: spacing.x * dimensions.x as f32,
+            y: spacing.y * dimensions.y as f32,
+            z: spacing.z * dimensions.z as f32,
+        };
 
         Ok(Self {
             texture,
@@ -109,6 +116,7 @@ impl Texture {
             sampler,
             dimensions,
             spacing,
+            extent,
         })
     }
 }

@@ -12,8 +12,8 @@ pub struct ImportItem {
     // preview_image_path: Option<PathBuf>,
     bits: Option<u8>,
     // endianness: Option<Endianness>,
-    pub dimensions: Option<(u32, u32, u32)>,
-    pub spacing: Option<(f32, f32, f32)>,
+    pub dimensions: Option<glam::UVec3>,
+    pub spacing: Option<glam::Vec3>,
     pub data: Option<Vec<u8>>,
 }
 
@@ -95,18 +95,18 @@ impl Importer {
             let dim1: u32 = captures.get(1).unwrap().as_str().parse().unwrap();
             let dim2: u32 = captures.get(2).unwrap().as_str().parse().unwrap();
             let dim3: u32 = captures.get(3).unwrap().as_str().parse().unwrap();
-            self.item.dimensions = Some((dim1, dim2, dim3));
+            self.item.dimensions = Some(glam::uvec3(dim1, dim2, dim3));
         } else {
-            self.item.dimensions = Some((1, 1, 1));
+            self.item.dimensions = Some(glam::uvec3(1, 1, 1));
         }
 
         if let Some(captures) = spacing_regex.captures(filename) {
             let spacing1: f32 = captures.get(1).unwrap().as_str().parse().unwrap();
             let spacing2: f32 = captures.get(2).unwrap().as_str().parse().unwrap();
             let spacing3: f32 = captures.get(3).unwrap().as_str().parse().unwrap();
-            self.item.spacing = Some((spacing1, spacing2, spacing3));
+            self.item.spacing = Some(glam::vec3(spacing1, spacing2, spacing3));
         } else {
-            self.item.spacing = Some((1.0, 1.0, 1.0));
+            self.item.spacing = Some(glam::vec3(1.0, 1.0, 1.0));
         }
     }
     fn show_metadata_dialog_raw3d(&mut self, ctx: &egui::Context) {
@@ -119,32 +119,32 @@ impl Importer {
             16
         };
         let mut dimension_x: u32 = if self.item.dimensions.is_some() {
-            self.item.dimensions.unwrap().0
+            self.item.dimensions.unwrap().x
         } else {
             1
         };
         let mut dimension_y: u32 = if self.item.dimensions.is_some() {
-            self.item.dimensions.unwrap().1
+            self.item.dimensions.unwrap().y
         } else {
             1
         };
         let mut dimension_z: u32 = if self.item.dimensions.is_some() {
-            self.item.dimensions.unwrap().2
+            self.item.dimensions.unwrap().z
         } else {
             1
         };
         let mut spacing_x: f32 = if self.item.dimensions.is_some() {
-            self.item.spacing.unwrap().0
+            self.item.spacing.unwrap().x
         } else {
             1.0
         };
         let mut spacing_y: f32 = if self.item.dimensions.is_some() {
-            self.item.spacing.unwrap().1
+            self.item.spacing.unwrap().y
         } else {
             1.0
         };
         let mut spacing_z: f32 = if self.item.dimensions.is_some() {
-            self.item.spacing.unwrap().2
+            self.item.spacing.unwrap().z
         } else {
             1.0
         };
@@ -212,7 +212,7 @@ impl Importer {
             });
         self.visible &= visible;
         self.item.bits = Some(bits as u8);
-        self.item.dimensions = Some((dimension_x, dimension_y, dimension_z));
-        self.item.spacing = Some((spacing_x, spacing_y, spacing_z));
+        self.item.dimensions = Some(glam::uvec3(dimension_x, dimension_y, dimension_z));
+        self.item.spacing = Some(glam::vec3(spacing_x, spacing_y, spacing_z));
     }
 }
