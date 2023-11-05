@@ -18,6 +18,7 @@ struct RayMarchingRendererResources {
     uniform_buffer_focal_length: wgpu::Buffer,
     uniform_buffer_aspect_ratio: wgpu::Buffer,
     uniform_buffer_viewport_size: wgpu::Buffer,
+    uniform_buffer_viewport_position: wgpu::Buffer,
     uniform_buffer_ray_origin: wgpu::Buffer,
     uniform_buffer_top_aabb: wgpu::Buffer,
     uniform_buffer_bottom_aabb: wgpu::Buffer,
@@ -39,6 +40,7 @@ impl RayMarchingRendererResources {
         focal_length: f32,
         aspect_ratio: f32,
         viewport_size: glam::Vec2,
+        viewport_position: glam::Vec2,
         ray_origin: glam::Vec3,
         top_aabb: glam::Vec3,
         bottom_aabb: glam::Vec3,
@@ -80,6 +82,11 @@ impl RayMarchingRendererResources {
             &self.uniform_buffer_viewport_size,
             0,
             bytemuck::cast_slice(&[viewport_size]),
+        );
+        queue.write_buffer(
+            &self.uniform_buffer_viewport_position,
+            0,
+            bytemuck::cast_slice(&[viewport_position]),
         );
         queue.write_buffer(
             &self.uniform_buffer_ray_origin,
@@ -128,6 +135,7 @@ pub struct RayMarchingRenderer {
     focal_length: f32,
     aspect_ratio: f32,
     viewport_size: glam::Vec2,
+    viewport_position: glam::Vec2,
     ray_origin: glam::Vec3,
     top_aabb: glam::Vec3,
     bottom_aabb: glam::Vec3,
@@ -286,6 +294,15 @@ impl RayMarchingRenderer {
                 usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
             });
 
+        let viewport_position = glam::Vec2::default();
+
+        let uniform_buffer_viewport_position =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("viewport size"),
+                contents: bytemuck::cast_slice(&[viewport_position]),
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
+            });
+
         let ray_origin = glam::Vec3::default();
 
         let uniform_buffer_ray_origin =
@@ -426,6 +443,16 @@ impl RayMarchingRenderer {
                         },
                         count: None,
                     },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 10,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
                 ],
             });
 
@@ -461,18 +488,22 @@ impl RayMarchingRenderer {
                     },
                     wgpu::BindGroupEntry {
                         binding: 6,
-                        resource: uniform_buffer_ray_origin.as_entire_binding(),
+                        resource: uniform_buffer_viewport_position.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 7,
-                        resource: uniform_buffer_top_aabb.as_entire_binding(),
+                        resource: uniform_buffer_ray_origin.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 8,
-                        resource: uniform_buffer_bottom_aabb.as_entire_binding(),
+                        resource: uniform_buffer_top_aabb.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 9,
+                        resource: uniform_buffer_bottom_aabb.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 10,
                         resource: uniform_buffer_camera_position.as_entire_binding(),
                     },
                 ],
@@ -552,6 +583,7 @@ impl RayMarchingRenderer {
             uniform_buffer_focal_length,
             uniform_buffer_aspect_ratio,
             uniform_buffer_viewport_size,
+            uniform_buffer_viewport_position,
             uniform_buffer_ray_origin,
             uniform_buffer_top_aabb,
             uniform_buffer_bottom_aabb,
@@ -590,6 +622,7 @@ impl RayMarchingRenderer {
             focal_length,
             aspect_ratio,
             viewport_size,
+            viewport_position,
             ray_origin,
             top_aabb,
             bottom_aabb,
@@ -642,6 +675,10 @@ impl RayMarchingRenderer {
         let viewport_size = Vec2 {
             x: rect.width(),
             y: rect.height(),
+        };
+        let viewport_position = Vec2 {
+            x: rect.left_top().x,
+            y: rect.left_top().y,
         };
 
         let z_near = 0.0001;
@@ -709,6 +746,7 @@ impl RayMarchingRenderer {
                     focal_length,
                     aspect_ratio,
                     viewport_size,
+                    viewport_position,
                     ray_origin,
                     top_aabb,
                     bottom_aabb,

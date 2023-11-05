@@ -39,12 +39,14 @@ var<uniform> aspect_ratio: f32;
 @group(2) @binding(5)
 var<uniform> viewport_size: vec2<f32>;
 @group(2) @binding(6)
-var<uniform> ray_origin: vec3<f32>;
+var<uniform> viewport_position: vec2<f32>;
 @group(2) @binding(7)
-var<uniform> top_aabb: vec3<f32>;
+var<uniform> ray_origin: vec3<f32>;
 @group(2) @binding(8)
-var<uniform> bottom_aabb: vec3<f32>;
+var<uniform> top_aabb: vec3<f32>;
 @group(2) @binding(9)
+var<uniform> bottom_aabb: vec3<f32>;
+@group(2) @binding(10)
 var<uniform> camera_position: vec3<f32>;
 
 fn intersectAABB(ray_origin: vec3<f32>, rayDir: vec3<f32>, boxMin: vec3<f32>, boxMax: vec3<f32>) -> vec2<f32> {
@@ -109,8 +111,10 @@ fn fs_main(@builtin(position) frag_coord: vec4<f32>) -> @location(0) vec4<f32> {
     // let value = textureSample(t_diffuse, s_diffuse, position)[0];
     // return vec4<f32>(value, 0.0, 0.0, 1.0);
 
+	let local_frag_coord: vec2<f32> = frag_coord.xy - viewport_position;
 
-    var ray_direction_xy: vec2<f32> = (2.0 * frag_coord.xy / viewport_size - 1.0);
+    var ray_direction_xy: vec2<f32> = (2.0 * local_frag_coord.xy / viewport_size - 1.0);
+
 	ray_direction_xy.x *= aspect_ratio;
 	var ray_direction: vec3<f32> = vec3<f32>(ray_direction_xy, -focal_length);
 	ray_direction = (vec4<f32>(ray_direction, 0.0) * view_model_matrix_without_model_scale).xyz;
@@ -177,6 +181,9 @@ fn fs_main(@builtin(position) frag_coord: vec4<f32>) -> @location(0) vec4<f32> {
     else {
         value = vec4<f32>(firstHit, 0.0);
     }
+
+	// value.x = frag_coord.x / viewport_size.x;
+	// value.y = frag_coord.y / viewport_size.y;
 
 	return value;
 
