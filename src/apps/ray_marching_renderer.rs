@@ -610,10 +610,10 @@ impl RayMarchingRenderer {
             }
         }
 
-        let eye = vec3(0.0, 0.0, 2.0);
-        let center = vec3(0.0, 0.0, -1.0);
+        let eye = vec3(0.0, 0.0, -2.0);
+        let center = vec3(0.0, 0.0, 0.0);
         let up = vec3(0.0, 1.0, 0.0);
-        let view_matrix = glam::Mat4::look_at_rh(eye, center, up);
+        let view_matrix = glam::Mat4::look_at_lh(eye, center, up);
 
         Some(Self {
             id,
@@ -681,11 +681,11 @@ impl RayMarchingRenderer {
             y: rect.left_top().y,
         };
 
-        let z_near = 0.0001;
+        let z_near = 0.1;
         let z_far = 10.0;
         let fov_y_radians = 90.0;
         let projection_matrix =
-            glam::Mat4::perspective_rh_gl(fov_y_radians, aspect_ratio, z_near, z_far);
+            glam::Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_far, z_near);
 
         let projection_view_model_matrix = projection_matrix
             * self.view_matrix
