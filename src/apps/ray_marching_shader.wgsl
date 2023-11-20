@@ -185,6 +185,13 @@ fn fs_main(@builtin(position) frag_coord: vec4<f32>) -> @location(0) vec4<f32> {
 	// value.x = frag_coord.x / viewport_size.x;
 	// value.y = frag_coord.y / viewport_size.y;
 
+
+	// return vec4<f32>(local_frag_coord.x / viewport_size.x, local_frag_coord.y / viewport_size.y, 1.0, 1.0);
+
+	// maybe the display dpi affects the egui box size but not the wgpu frag coordinates
+
+	// return vec4<f32>(local_frag_coord.x / viewport_size.x, local_frag_coord.y / viewport_size.y, 1.0, 1.0);
+
 	return value;
 
 	// gl_FragDepth = length(position - ray_start) / gl_FragCoord.w;

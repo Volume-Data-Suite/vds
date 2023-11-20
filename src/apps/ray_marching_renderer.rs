@@ -667,18 +667,21 @@ impl RayMarchingRenderer {
         let (rect, response) =
             ui.allocate_exact_size(availbale_size, egui::Sense::click_and_drag());
 
+        // fix for high dpi displays
+        let ppp = ui.ctx().pixels_per_point();
+
         // Clone locals so we can move them into the paint callback:
         let id = self.id;
 
         let screen_rect = ui.ctx().screen_rect();
         let aspect_ratio = rect.width() / rect.height();
         let viewport_size = Vec2 {
-            x: rect.width(),
-            y: rect.height(),
+            x: rect.width() * ppp,
+            y: rect.height() * ppp,
         };
         let viewport_position = Vec2 {
-            x: rect.left_top().x,
-            y: rect.left_top().y,
+            x: rect.left_top().x * ppp,
+            y: rect.left_top().y * ppp,
         };
 
         let z_near = 0.1;
