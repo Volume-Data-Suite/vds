@@ -54,3 +54,6 @@ dist
 
 # VS Code
 .vscode
+
+# Rust Rover
+.idea
