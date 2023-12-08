@@ -107,10 +107,6 @@ fn phongShading(ray: vec3<f32>, position: vec3<f32>, lightPosition: vec3<f32>) -
 
 @fragment
 fn fs_main(@builtin(position) frag_coord: vec4<f32>) -> @location(0) vec4<f32> {
-    // let position = vec3<f32>(0.5, 0.5, 0.5);
-    // let value = textureSample(t_diffuse, s_diffuse, position)[0];
-    // return vec4<f32>(value, 0.0, 0.0, 1.0);
-
 	let local_frag_coord: vec2<f32> = frag_coord.xy - viewport_position;
 
     var ray_direction_xy: vec2<f32> = (2.0 * local_frag_coord.xy / viewport_size - 1.0);
@@ -159,17 +155,6 @@ fn fs_main(@builtin(position) frag_coord: vec4<f32>) -> @location(0) vec4<f32> {
         i += 1;
     }
 
-	// for (int i = 0; i <= steps; i++) {
-	// 	intensity = getVolumeValue(position);
-
-	// 	if(intensity >= threshold) {
-	// 		firstHit = vec3((intensity > 0.0f) ? 0.5f : 0.0f);
-	// 		break;
-    // 	}
-
-	// 	position += step_vector;
-	// }
-
 	// Phong Shading
     firstHit += 0.5 * phongShading(ray, position, camera_position);
 
@@ -182,18 +167,5 @@ fn fs_main(@builtin(position) frag_coord: vec4<f32>) -> @location(0) vec4<f32> {
         value = vec4<f32>(firstHit, 0.0);
     }
 
-	// value.x = frag_coord.x / viewport_size.x;
-	// value.y = frag_coord.y / viewport_size.y;
-
-
-	// return vec4<f32>(local_frag_coord.x / viewport_size.x, local_frag_coord.y / viewport_size.y, 1.0, 1.0);
-
-	// maybe the display dpi affects the egui box size but not the wgpu frag coordinates
-
-	// return vec4<f32>(local_frag_coord.x / viewport_size.x, local_frag_coord.y / viewport_size.y, 1.0, 1.0);
-
 	return value;
-
-	// gl_FragDepth = length(position - ray_start) / gl_FragCoord.w;
-
 }
