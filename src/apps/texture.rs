@@ -8,6 +8,7 @@ pub struct Texture {
     pub dimensions: glam::UVec3,
     pub spacing: glam::Vec3,
     pub extent: glam::Vec3,
+    pub origin: glam::Vec3,
 }
 
 impl Texture {
@@ -110,6 +111,8 @@ impl Texture {
             z: spacing.z * dimensions.z as f32,
         };
 
+        let origin = glam::Vec3::default();
+
         Ok(Self {
             texture,
             view,
@@ -117,6 +120,7 @@ impl Texture {
             dimensions,
             spacing,
             extent,
+            origin,
         })
     }
 }

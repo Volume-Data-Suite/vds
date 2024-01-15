@@ -207,7 +207,7 @@ impl RayMarchingRenderer {
                         ty: wgpu::BindingType::Texture {
                             multisampled: false,
                             view_dimension: wgpu::TextureViewDimension::D3,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: (true) },
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         },
                         count: None,
                     },
@@ -611,7 +611,7 @@ impl RayMarchingRenderer {
         }
 
         let eye = vec3(0.0, 0.0, -2.0);
-        let center = vec3(0.0, 0.0, 0.0);
+        let center = vec3(0.0, 0.0, 1.0);
         let up = vec3(0.0, 1.0, 0.0);
         let view_matrix = glam::Mat4::look_at_lh(eye, center, up);
 
@@ -661,11 +661,10 @@ impl RayMarchingRenderer {
         return arc_ball_vector;
     }
 
-    // pub fn custom_painting(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
     pub fn custom_painting(&mut self, ui: &mut egui::Ui) {
-        let availbale_size = ui.available_size_before_wrap();
+        let available_size = ui.available_size_before_wrap();
         let (rect, response) =
-            ui.allocate_exact_size(availbale_size, egui::Sense::click_and_drag());
+            ui.allocate_exact_size(available_size, egui::Sense::click_and_drag());
 
         // fix for high dpi displays
         let ppp = ui.ctx().pixels_per_point();
@@ -673,7 +672,6 @@ impl RayMarchingRenderer {
         // Clone locals so we can move them into the paint callback:
         let id = self.id;
 
-        let screen_rect = ui.ctx().screen_rect();
         let aspect_ratio = rect.width() / rect.height();
         let viewport_size = Vec2 {
             x: rect.width() * ppp,
@@ -686,29 +684,20 @@ impl RayMarchingRenderer {
 
         let z_near = 0.1;
         let z_far = 10.0;
-        let fov_y_radians = 90.0;
-        let projection_matrix =
-            glam::Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_far, z_near);
+        let fov: f32 = 90.0;
+        let focal_length: f32 = (1.0 / (std::f32::consts::PI / 180.0 * fov / 2.0).tan()) as f32;
+        let projection_matrix = glam::Mat4::perspective_lh(fov, aspect_ratio, z_far, z_near);
+
+        let view_matrix = self.view_matrix;
 
         let projection_view_model_matrix = projection_matrix
-            * self.view_matrix
+            * view_matrix
             * (self.rotation_matrix * self.translation_matrix * self.scale_matrix);
-        let view_model_matrix_without_model_scale =
-            self.view_matrix * (self.rotation_matrix * self.translation_matrix);
 
         let threshold: f32 = self.threshold;
         let sample_step_length = self.sample_step_length;
 
-        // const float projectionMatrixValue1x1 = m_projectionMatrix->constData()[1 * 4 + 1];
-        // const float fov = std::atan(1.0f / projectionMatrixValue1x1);
-        // const GLfloat focalLength = 1.0f / std::tan(fov);
-        let projection_matrix_value1x1: f32 = projection_matrix.y_axis.y;
-        let fov: f32 = (1.0 / projection_matrix_value1x1).atan();
-        let focal_length = 1.0 / fov.tan();
-
-        let ray_origin_vec4 = view_model_matrix_without_model_scale.clone().inverse()
-            * glam::vec4(0.0, 0.0, 0.0, 0.0);
-        let ray_origin = ray_origin_vec4.truncate();
+        let ray_origin = (view_matrix.inverse() * glam::vec4(0.0, 0.0, 0.0, 0.0)).truncate();
 
         let top_aabb = self.extent;
         let bottom_aabb = -self.extent;
@@ -743,7 +732,7 @@ impl RayMarchingRenderer {
                     device,
                     queue,
                     projection_view_model_matrix,
-                    view_model_matrix_without_model_scale,
+                    view_matrix,
                     threshold,
                     sample_step_length,
                     focal_length,
@@ -847,10 +836,11 @@ const VERTICES: &[Vertex] = &[
 ];
 
 const INDICES: &[u16] = &[
-    0, 1, 2, 2, 3, 0, // front
-    1, 5, 6, 6, 2, 1, // right
-    7, 6, 5, 5, 4, 7, // back
-    4, 0, 3, 3, 7, 4, // left
-    4, 5, 1, 1, 0, 4, // bottom
-    3, 2, 6, 6, 7, 3, // top
+    // front
+    0, 1, 2, 0, 2, 3, // right
+    1, 5, 6, 1, 6, 2, // back
+    5, 4, 7, 5, 7, 6, // left
+    4, 0, 3, 4, 3, 7, // top
+    2, 6, 7, 2, 7, 3, // bottom
+    4, 5, 1, 4, 1, 0,
 ];
