@@ -18,7 +18,7 @@ fn vs_main(
     model: VertexInput,
 ) -> VertexOutput {
     var out: VertexOutput;
-    out.tex_coords = 0.5 * vec2(model.position.x, model.position.y) + 0.5;
+    out.tex_coords = model.tex_coords;
     out.clip_position = vec4<f32>(scale_factor * model.position, 1.0);
     return out;
 }
