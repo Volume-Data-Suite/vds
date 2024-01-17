@@ -610,8 +610,8 @@ impl RayMarchingRenderer {
             }
         }
 
-        let eye = vec3(0.0, 0.0, -2.0);
-        let center = vec3(0.0, 0.0, 1.0);
+        let eye = vec3(0.0, 0.0, 2.0);
+        let center = vec3(0.0, 0.0, 0.0);
         let up = vec3(0.0, 1.0, 0.0);
         let view_matrix = glam::Mat4::look_at_lh(eye, center, up);
 
@@ -688,27 +688,22 @@ impl RayMarchingRenderer {
         let focal_length: f32 = (1.0 / (std::f32::consts::PI / 180.0 * fov / 2.0).tan()) as f32;
         let projection_matrix = glam::Mat4::perspective_lh(fov, aspect_ratio, z_far, z_near);
 
-        let view_matrix = self.view_matrix;
+        let view_model_matrix_without_model_scale =
+            self.view_matrix * (self.rotation_matrix * self.translation_matrix);
 
         let projection_view_model_matrix = projection_matrix
-            * view_matrix
+            * self.view_matrix
             * (self.rotation_matrix * self.translation_matrix * self.scale_matrix);
 
         let threshold: f32 = self.threshold;
         let sample_step_length = self.sample_step_length;
 
-        let ray_origin = (view_matrix.inverse() * glam::vec4(0.0, 0.0, 0.0, 0.0)).truncate();
+        let ray_origin = (self.view_matrix.inverse() * glam::vec4(0.0, 0.0, 2.0, 0.0)).truncate();
 
         let top_aabb = self.extent;
         let bottom_aabb = -self.extent;
 
-        let camera_position_vec4 =
-            projection_view_model_matrix.clone().inverse() * Vec4::new(0.0, 0.0, 2.0, 1.0);
-        let camera_position = glam::Vec3::new(
-            camera_position_vec4.x,
-            camera_position_vec4.y,
-            camera_position_vec4.z,
-        );
+        let camera_position = glam::Vec3::new(0.0, 0.0, 2.0);
 
         // The callback function for WGPU is in two stages: prepare, and paint.
         //
@@ -732,7 +727,7 @@ impl RayMarchingRenderer {
                     device,
                     queue,
                     projection_view_model_matrix,
-                    view_matrix,
+                    view_model_matrix_without_model_scale,
                     threshold,
                     sample_step_length,
                     focal_length,
