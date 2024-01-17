@@ -698,12 +698,13 @@ impl RayMarchingRenderer {
         let threshold: f32 = self.threshold;
         let sample_step_length = self.sample_step_length;
 
-        let ray_origin = (self.view_matrix.inverse() * glam::vec4(0.0, 0.0, 2.0, 0.0)).truncate();
+        let camera_position = glam::Vec3::new(0.0, 0.0, 2.0);
+
+        // TODO: understand why camera_position + cube/with is required for z
+        let ray_origin = (self.view_matrix.inverse() * glam::vec4(0.0, 0.0, 3.0, 0.0)).truncate();
 
         let top_aabb = self.extent;
         let bottom_aabb = -self.extent;
-
-        let camera_position = glam::Vec3::new(0.0, 0.0, 2.0);
 
         // The callback function for WGPU is in two stages: prepare, and paint.
         //
