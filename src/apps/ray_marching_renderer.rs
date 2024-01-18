@@ -639,28 +639,7 @@ impl RayMarchingRenderer {
         })
     }
 }
-
 impl RayMarchingRenderer {
-    fn get_arc_ball_vector(position: glam::Vec2, viewport: glam::Vec3) -> glam::Vec3 {
-        let mut arc_ball_vector = vec3(
-            1.0 * position.x / viewport.x * 2.0 - 1.0,
-            1.0 * position.y / viewport.y * 2.0 - 1.0,
-            0.0,
-        );
-        arc_ball_vector.y = -arc_ball_vector.y;
-
-        let op_squared =
-            arc_ball_vector.x * arc_ball_vector.x + arc_ball_vector.y * arc_ball_vector.y;
-
-        if op_squared <= 1.0 {
-            arc_ball_vector.z = (1.0 - op_squared).sqrt();
-        } else {
-            arc_ball_vector = arc_ball_vector.normalize();
-        }
-
-        return arc_ball_vector;
-    }
-
     pub fn custom_painting(&mut self, ui: &mut egui::Ui) {
         let available_size = ui.available_size_before_wrap();
         let (rect, _response) =
@@ -681,6 +660,19 @@ impl RayMarchingRenderer {
             x: rect.left_top().x * ppp,
             y: rect.left_top().y * ppp,
         };
+
+        if response.dragged() {
+            let drag_delta = response.drag_delta();
+            let sensitivity = 0.01;
+            let rotation_angle = drag_delta.length() * sensitivity;
+            if rotation_angle >= 0.001 {
+                let rotation_axis = Vec3::new(drag_delta.y, -drag_delta.x, 0.0).normalize();
+                let rotation_quaternion =
+                    glam::Quat::from_axis_angle(rotation_axis, rotation_angle);
+                self.rotation_matrix =
+                    glam::Mat4::from_quat(rotation_quaternion) * self.rotation_matrix;
+            }
+        }
 
         let z_near = 0.1;
         let z_far = 10.0;
