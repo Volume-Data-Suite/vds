@@ -330,7 +330,7 @@ impl RayMarchingRenderer {
                 usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
             });
 
-        let camera_position = glam::Vec3::default();
+        let camera_position = glam::Vec3::new(0.0, 0.0, 2.5);
 
         let uniform_buffer_camera_position =
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -610,7 +610,7 @@ impl RayMarchingRenderer {
             }
         }
 
-        let eye = vec3(0.0, 0.0, 2.0);
+        let eye = camera_position;
         let center = vec3(0.0, 0.0, 0.0);
         let up = vec3(0.0, 1.0, 0.0);
         let view_matrix = glam::Mat4::look_at_lh(eye, center, up);
@@ -666,11 +666,11 @@ impl RayMarchingRenderer {
         let (rect, _response) =
             ui.allocate_exact_size(available_size, egui::Sense::click_and_drag());
 
-        // fix for high dpi displays
-        let ppp = ui.ctx().pixels_per_point();
-
         // Clone locals so we can move them into the paint callback:
         let id = self.id;
+
+        // fix for high dpi displays
+        let ppp = ui.ctx().pixels_per_point();
 
         let aspect_ratio = rect.width() / rect.height();
         let viewport_size = Vec2 {
@@ -685,8 +685,12 @@ impl RayMarchingRenderer {
         let z_near = 0.1;
         let z_far = 10.0;
         let fov: f32 = 90.0;
-        let focal_length: f32 = (1.0 / (std::f32::consts::PI / 180.0 * fov / 2.0).tan()) as f32;
-        let projection_matrix = glam::Mat4::perspective_lh(fov, aspect_ratio, z_far, z_near);
+        // Convert degrees to radians
+        let fov_radians = f32::to_radians(fov);
+        // Calculate focal length
+        let focal_length = 1.0 / (fov_radians / 2.0).tan();
+        let projection_matrix =
+            glam::Mat4::perspective_lh(fov_radians, aspect_ratio, z_far, z_near);
 
         let view_model_matrix_without_model_scale =
             self.view_matrix * (self.rotation_matrix * self.translation_matrix);
@@ -698,10 +702,9 @@ impl RayMarchingRenderer {
         let threshold: f32 = self.threshold;
         let sample_step_length = self.sample_step_length;
 
-        let camera_position = glam::Vec3::new(0.0, 0.0, 2.0);
+        let camera_position = self.camera_position;
 
-        // TODO: understand why camera_position + cube/with is required for z
-        let ray_origin = (self.view_matrix.inverse() * glam::vec4(0.0, 0.0, 3.0, 0.0)).truncate();
+        let ray_origin = (self.view_matrix.inverse() * camera_position.extend(0.0)).truncate();
 
         let top_aabb = self.extent;
         let bottom_aabb = -self.extent;
