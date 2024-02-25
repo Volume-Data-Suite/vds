@@ -5,7 +5,7 @@ use eframe::{
     egui_wgpu::{self, wgpu},
 };
 use egui::{epaint::Shadow, Pos2};
-use glam::{vec3, Vec2};
+use glam::{vec3, vec4, Vec2, Vec3, Vec4};
 
 struct RayMarchingRendererResources {
     render_pipeline: wgpu::RenderPipeline,
@@ -642,7 +642,7 @@ impl RayMarchingRenderer {
 impl RayMarchingRenderer {
     pub fn custom_painting(&mut self, ui: &mut egui::Ui) {
         let available_size = ui.available_size_before_wrap();
-        let (rect, _response) =
+        let (rect, response) =
             ui.allocate_exact_size(available_size, egui::Sense::click_and_drag());
 
         // Clone locals so we can move them into the paint callback:

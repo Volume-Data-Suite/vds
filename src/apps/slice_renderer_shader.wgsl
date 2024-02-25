@@ -52,5 +52,6 @@ fn get_value(position: vec2<f32>) -> vec3<f32> {
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let position = in.tex_coords;
     let value = textureSample(t_diffuse, s_diffuse, get_value(position))[0];
-    return vec4<f32>(value, value, value, 1.0);
+    //return vec4<f32>(value, value, value, 1.0);
+    return vec4<f32>(position.x, position.y, 0.0, 1.0);
 }
