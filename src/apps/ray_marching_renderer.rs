@@ -5,7 +5,7 @@ use eframe::{
     egui_wgpu::{self, wgpu},
 };
 use egui::{epaint::Shadow, Pos2};
-use glam::{vec3, Vec2, Vec3, Vec4};
+use glam::{vec3, Vec2};
 
 struct RayMarchingRendererResources {
     render_pipeline: wgpu::RenderPipeline,
@@ -663,7 +663,7 @@ impl RayMarchingRenderer {
 
     pub fn custom_painting(&mut self, ui: &mut egui::Ui) {
         let available_size = ui.available_size_before_wrap();
-        let (rect, response) =
+        let (rect, _response) =
             ui.allocate_exact_size(available_size, egui::Sense::click_and_drag());
 
         // fix for high dpi displays
